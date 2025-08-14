@@ -227,6 +227,7 @@ type NewSandbox struct {
 	AutoPause *bool            `json:"autoPause,omitempty"`
 	EnvVars   *EnvVars         `json:"envVars,omitempty"`
 	Metadata  *SandboxMetadata `json:"metadata,omitempty"`
+	Secrets   *Secrets         `json:"secrets,omitempty"`
 
 	// Secure Secure all system communication with sandbox
 	Secure *bool `json:"secure,omitempty"`
@@ -499,6 +500,9 @@ type SandboxState string
 type SandboxesWithMetrics struct {
 	Sandboxes map[string]SandboxMetric `json:"sandboxes"`
 }
+
+// Secrets defines model for Secrets.
+type Secrets map[string]string
 
 // Team defines model for Team.
 type Team struct {
