@@ -16,6 +16,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/predicate"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamsecret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/tier"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/usersteams"
@@ -31,6 +32,7 @@ type TeamQuery struct {
 	predicates      []predicate.Team
 	withUsers       *UserQuery
 	withTeamAPIKeys *TeamAPIKeyQuery
+	withTeamSecrets *TeamSecretQuery
 	withTeamTier    *TierQuery
 	withEnvs        *EnvQuery
 	withUsersTeams  *UsersTeamsQuery
@@ -115,6 +117,31 @@ func (tq *TeamQuery) QueryTeamAPIKeys() *TeamAPIKeyQuery {
 		schemaConfig := tq.schemaConfig
 		step.To.Schema = schemaConfig.TeamAPIKey
 		step.Edge.Schema = schemaConfig.TeamAPIKey
+		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTeamSecrets chains the current query on the "team_secrets" edge.
+func (tq *TeamQuery) QueryTeamSecrets() *TeamSecretQuery {
+	query := (&TeamSecretClient{config: tq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := tq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := tq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(team.Table, team.FieldID, selector),
+			sqlgraph.To(teamsecret.Table, teamsecret.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, team.TeamSecretsTable, team.TeamSecretsColumn),
+		)
+		schemaConfig := tq.schemaConfig
+		step.To.Schema = schemaConfig.TeamSecret
+		step.Edge.Schema = schemaConfig.TeamSecret
 		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -390,6 +417,7 @@ func (tq *TeamQuery) Clone() *TeamQuery {
 		predicates:      append([]predicate.Team{}, tq.predicates...),
 		withUsers:       tq.withUsers.Clone(),
 		withTeamAPIKeys: tq.withTeamAPIKeys.Clone(),
+		withTeamSecrets: tq.withTeamSecrets.Clone(),
 		withTeamTier:    tq.withTeamTier.Clone(),
 		withEnvs:        tq.withEnvs.Clone(),
 		withUsersTeams:  tq.withUsersTeams.Clone(),
@@ -418,6 +446,17 @@ func (tq *TeamQuery) WithTeamAPIKeys(opts ...func(*TeamAPIKeyQuery)) *TeamQuery 
 		opt(query)
 	}
 	tq.withTeamAPIKeys = query
+	return tq
+}
+
+// WithTeamSecrets tells the query-builder to eager-load the nodes that are connected to
+// the "team_secrets" edge. The optional arguments are used to configure the query builder of the edge.
+func (tq *TeamQuery) WithTeamSecrets(opts ...func(*TeamSecretQuery)) *TeamQuery {
+	query := (&TeamSecretClient{config: tq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	tq.withTeamSecrets = query
 	return tq
 }
 
@@ -532,9 +571,10 @@ func (tq *TeamQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Team, e
 	var (
 		nodes       = []*Team{}
 		_spec       = tq.querySpec()
-		loadedTypes = [5]bool{
+		loadedTypes = [6]bool{
 			tq.withUsers != nil,
 			tq.withTeamAPIKeys != nil,
+			tq.withTeamSecrets != nil,
 			tq.withTeamTier != nil,
 			tq.withEnvs != nil,
 			tq.withUsersTeams != nil,
@@ -574,6 +614,13 @@ func (tq *TeamQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Team, e
 		if err := tq.loadTeamAPIKeys(ctx, query, nodes,
 			func(n *Team) { n.Edges.TeamAPIKeys = []*TeamAPIKey{} },
 			func(n *Team, e *TeamAPIKey) { n.Edges.TeamAPIKeys = append(n.Edges.TeamAPIKeys, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := tq.withTeamSecrets; query != nil {
+		if err := tq.loadTeamSecrets(ctx, query, nodes,
+			func(n *Team) { n.Edges.TeamSecrets = []*TeamSecret{} },
+			func(n *Team, e *TeamSecret) { n.Edges.TeamSecrets = append(n.Edges.TeamSecrets, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -677,6 +724,36 @@ func (tq *TeamQuery) loadTeamAPIKeys(ctx context.Context, query *TeamAPIKeyQuery
 	}
 	query.Where(predicate.TeamAPIKey(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(team.TeamAPIKeysColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.TeamID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "team_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (tq *TeamQuery) loadTeamSecrets(ctx context.Context, query *TeamSecretQuery, nodes []*Team, init func(*Team), assign func(*Team, *TeamSecret)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Team)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(teamsecret.FieldTeamID)
+	}
+	query.Where(predicate.TeamSecret(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(team.TeamSecretsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

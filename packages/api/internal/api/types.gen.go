@@ -98,6 +98,25 @@ type CreatedTeamAPIKey struct {
 	Name string `json:"name"`
 }
 
+// CreatedTeamSecret defines model for CreatedTeamSecret.
+type CreatedTeamSecret struct {
+	// CreatedAt When the secret was created
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Hosts List of hosts where this secret can be used
+	Hosts []string `json:"hosts"`
+
+	// Id Identifier of the secret
+	Id   openapi_types.UUID       `json:"id"`
+	Mask IdentifierMaskingDetails `json:"mask"`
+
+	// Name Name of the secret
+	Name string `json:"name"`
+
+	// Value Raw value of the secret (only shown on creation)
+	Value string `json:"value"`
+}
+
 // DiskMetrics defines model for DiskMetrics.
 type DiskMetrics struct {
 	// Device Device name
@@ -223,6 +242,18 @@ type NewSandbox struct {
 type NewTeamAPIKey struct {
 	// Name Name of the API key
 	Name string `json:"name"`
+}
+
+// NewTeamSecret defines model for NewTeamSecret.
+type NewTeamSecret struct {
+	// Hosts List of hosts where this secret can be used
+	Hosts []string `json:"hosts"`
+
+	// Name Name of the secret
+	Name string `json:"name"`
+
+	// Value Value of the secret
+	Value string `json:"value"`
 }
 
 // Node defines model for Node.
@@ -513,6 +544,22 @@ type TeamMetric struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// TeamSecret defines model for TeamSecret.
+type TeamSecret struct {
+	// CreatedAt When the secret was created
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Hosts List of hosts where this secret can be used
+	Hosts []string `json:"hosts"`
+
+	// Id Identifier of the secret
+	Id   openapi_types.UUID       `json:"id"`
+	Mask IdentifierMaskingDetails `json:"mask"`
+
+	// Name Name of the secret
+	Name string `json:"name"`
+}
+
 // TeamUser defines model for TeamUser.
 type TeamUser struct {
 	// Email Email of the user
@@ -700,6 +747,9 @@ type NodeID = string
 // SandboxID defines model for sandboxID.
 type SandboxID = string
 
+// SecretID defines model for secretID.
+type SecretID = string
+
 // TeamID defines model for teamID.
 type TeamID = string
 
@@ -821,6 +871,9 @@ type PostSandboxesSandboxIDResumeJSONRequestBody = ResumedSandbox
 
 // PostSandboxesSandboxIDTimeoutJSONRequestBody defines body for PostSandboxesSandboxIDTimeout for application/json ContentType.
 type PostSandboxesSandboxIDTimeoutJSONRequestBody PostSandboxesSandboxIDTimeoutJSONBody
+
+// PostSecretsJSONRequestBody defines body for PostSecrets for application/json ContentType.
+type PostSecretsJSONRequestBody = NewTeamSecret
 
 // PostTemplatesJSONRequestBody defines body for PostTemplates for application/json ContentType.
 type PostTemplatesJSONRequestBody = TemplateBuildRequest

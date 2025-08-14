@@ -227,6 +227,33 @@ var (
 			},
 		},
 	}
+	// TeamSecretsColumns holds the columns for the "team_secrets" table.
+	TeamSecretsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true, Default: "gen_random_uuid()"},
+		{Name: "secret_prefix", Type: field.TypeString, SchemaType: map[string]string{"postgres": "character varying(10)"}},
+		{Name: "secret_length", Type: field.TypeInt},
+		{Name: "secret_mask_prefix", Type: field.TypeString, SchemaType: map[string]string{"postgres": "character varying(5)"}},
+		{Name: "secret_mask_suffix", Type: field.TypeString, SchemaType: map[string]string{"postgres": "character varying(5)"}},
+		{Name: "created_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
+		{Name: "name", Type: field.TypeString, Default: "Unnamed Secret", SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "hosts", Type: field.TypeOther, SchemaType: map[string]string{"postgres": "text[]"}},
+		{Name: "team_id", Type: field.TypeUUID},
+	}
+	// TeamSecretsTable holds the schema information for the "team_secrets" table.
+	TeamSecretsTable = &schema.Table{
+		Name:       "team_secrets",
+		Columns:    TeamSecretsColumns,
+		PrimaryKey: []*schema.Column{TeamSecretsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "team_secrets_teams_team_secrets",
+				Columns:    []*schema.Column{TeamSecretsColumns[9]},
+				RefColumns: []*schema.Column{TeamsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// TiersColumns holds the columns for the "tiers" table.
 	TiersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true, SchemaType: map[string]string{"postgres": "text"}},
@@ -296,6 +323,7 @@ var (
 		SnapshotsTable,
 		TeamsTable,
 		TeamAPIKeysTable,
+		TeamSecretsTable,
 		TiersTable,
 		UsersTable,
 		UsersTeamsTable,
@@ -322,6 +350,8 @@ func init() {
 	TeamAPIKeysTable.ForeignKeys[0].RefTable = TeamsTable
 	TeamAPIKeysTable.ForeignKeys[1].RefTable = UsersTable
 	TeamAPIKeysTable.Annotation = &entsql.Annotation{}
+	TeamSecretsTable.ForeignKeys[0].RefTable = TeamsTable
+	TeamSecretsTable.Annotation = &entsql.Annotation{}
 	TiersTable.Annotation = &entsql.Annotation{}
 	TiersTable.Annotation.Checks = map[string]string{
 		"tiers_concurrent_sessions_check": "concurrent_instances > 0",

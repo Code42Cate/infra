@@ -555,6 +555,35 @@ func HasTeamAPIKeysWith(preds ...predicate.TeamAPIKey) predicate.Team {
 	})
 }
 
+// HasTeamSecrets applies the HasEdge predicate on the "team_secrets" edge.
+func HasTeamSecrets() predicate.Team {
+	return predicate.Team(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, TeamSecretsTable, TeamSecretsColumn),
+		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.TeamSecret
+		step.Edge.Schema = schemaConfig.TeamSecret
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTeamSecretsWith applies the HasEdge predicate on the "team_secrets" edge with a given conditions (other predicates).
+func HasTeamSecretsWith(preds ...predicate.TeamSecret) predicate.Team {
+	return predicate.Team(func(s *sql.Selector) {
+		step := newTeamSecretsStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.TeamSecret
+		step.Edge.Schema = schemaConfig.TeamSecret
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasTeamTier applies the HasEdge predicate on the "team_tier" edge.
 func HasTeamTier() predicate.Team {
 	return predicate.Team(func(s *sql.Selector) {

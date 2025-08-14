@@ -30,6 +30,9 @@ type Team func(*sql.Selector)
 // TeamAPIKey is the predicate function for teamapikey builders.
 type TeamAPIKey func(*sql.Selector)
 
+// TeamSecret is the predicate function for teamsecret builders.
+type TeamSecret func(*sql.Selector)
+
 // Tier is the predicate function for tier builders.
 type Tier func(*sql.Selector)
 

@@ -75,6 +75,12 @@ components:
       required: true
       schema:
         type: string
+    secretID:
+      name: secretID
+      in: path
+      required: true
+      schema:
+        type: string
 
   responses:
     "400":
@@ -1002,6 +1008,82 @@ components:
         name:
           type: string
           description: New name for the API key
+
+    TeamSecret:
+      required:
+        - id
+        - name
+        - mask
+        - hosts
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identifier of the secret
+        name:
+          type: string
+          description: Name of the secret
+        mask:
+          $ref: "#/components/schemas/IdentifierMaskingDetails"
+        hosts:
+          type: array
+          items:
+            type: string
+          description: List of hosts where this secret can be used
+        createdAt:
+          type: string
+          format: date-time
+          description: When the secret was created
+
+    CreatedTeamSecret:
+      required:
+        - id
+        - value
+        - mask
+        - name
+        - hosts
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identifier of the secret
+        value:
+          type: string
+          description: Raw value of the secret (only shown on creation)
+        mask:
+          $ref: "#/components/schemas/IdentifierMaskingDetails"
+        name:
+          type: string
+          description: Name of the secret
+        hosts:
+          type: array
+          items:
+            type: string
+          description: List of hosts where this secret can be used
+        createdAt:
+          type: string
+          format: date-time
+          description: When the secret was created
+
+    NewTeamSecret:
+      required:
+        - name
+        - value
+        - hosts
+      properties:
+        name:
+          type: string
+          description: Name of the secret
+        value:
+          type: string
+          description: Value of the secret
+        hosts:
+          type: array
+          items:
+            type: string
+          description: List of hosts where this secret can be used
 
     Error:
       required:
@@ -1955,6 +2037,72 @@ paths:
       responses:
         "204":
           description: Team API key deleted successfully
+        "401":
+          $ref: "#/components/responses/401"
+        "404":
+          $ref: "#/components/responses/404"
+        "500":
+          $ref: "#/components/responses/500"
+
+  /secrets:
+    get:
+      description: List all team secrets
+      tags: [secrets]
+      security:
+        - ApiKeyAuth: []
+        - Supabase1TokenAuth: []
+          Supabase2TeamAuth: []
+      responses:
+        "200":
+          description: List of team secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamSecret"
+        "401":
+          $ref: "#/components/responses/401"
+        "500":
+          $ref: "#/components/responses/500"
+    post:
+      description: Create a new team secret
+      tags: [secrets]
+      security:
+        - ApiKeyAuth: []
+        - Supabase1TokenAuth: []
+          Supabase2TeamAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewTeamSecret"
+      responses:
+        "201":
+          description: Team secret created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedTeamSecret"
+        "401":
+          $ref: "#/components/responses/401"
+        "500":
+          $ref: "#/components/responses/500"
+
+  /secrets/{secretID}:
+    delete:
+      description: Delete a team secret
+      tags: [secrets]
+      security:
+        - ApiKeyAuth: []
+        - Supabase1TokenAuth: []
+          Supabase2TeamAuth: []
+      parameters:
+        - $ref: "#/components/parameters/secretID"
+      responses:
+        "204":
+          description: Team secret deleted successfully
         "401":
           $ref: "#/components/responses/401"
         "404":

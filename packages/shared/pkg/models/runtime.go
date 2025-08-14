@@ -13,6 +13,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/snapshot"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamsecret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/usersteams"
 	"github.com/e2b-dev/infra/packages/shared/pkg/schema"
@@ -110,6 +111,16 @@ func init() {
 	teamapikeyDescName := teamapikeyFields[10].Descriptor()
 	// teamapikey.DefaultName holds the default value on creation for the name field.
 	teamapikey.DefaultName = teamapikeyDescName.Default.(string)
+	teamsecretFields := schema.TeamSecret{}.Fields()
+	_ = teamsecretFields
+	// teamsecretDescCreatedAt is the schema descriptor for created_at field.
+	teamsecretDescCreatedAt := teamsecretFields[5].Descriptor()
+	// teamsecret.DefaultCreatedAt holds the default value on creation for the created_at field.
+	teamsecret.DefaultCreatedAt = teamsecretDescCreatedAt.Default.(func() time.Time)
+	// teamsecretDescName is the schema descriptor for name field.
+	teamsecretDescName := teamsecretFields[8].Descriptor()
+	// teamsecret.DefaultName holds the default value on creation for the name field.
+	teamsecret.DefaultName = teamsecretDescName.Default.(string)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescEmail is the schema descriptor for email field.
