@@ -3,7 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,8 +21,10 @@ import (
 	"github.com/e2b-dev/infra/packages/api/internal/middleware/otel/metrics"
 	"github.com/e2b-dev/infra/packages/api/internal/utils"
 	"github.com/e2b-dev/infra/packages/shared/pkg/id"
+	"github.com/e2b-dev/infra/packages/shared/pkg/keys"
 	"github.com/e2b-dev/infra/packages/shared/pkg/logger"
 	sbxlogger "github.com/e2b-dev/infra/packages/shared/pkg/logger/sandbox"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamsecret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 	sharedUtils "github.com/e2b-dev/infra/packages/shared/pkg/utils"
 )
@@ -122,9 +126,21 @@ func (a *APIStore) PostSandboxes(c *gin.Context) {
 		metadata = *body.Metadata
 	}
 
-	var envVars map[string]string
+	envVars := make(map[string]string)
 	if body.EnvVars != nil {
 		envVars = *body.EnvVars
+	}
+
+	// NOTE: On my dev cluster this adds around ~5ms of latency to creating a sandbox (of course only if secrets are provided)
+	// You could also cache the secret ids!
+	if body.Secrets != nil {
+		secretEnvVars, secretErr := a.validateAndFormat(c, body.Secrets, teamInfo.Team.ID)
+		if secretErr != nil {
+			zap.L().Error("Failed to process secrets", zap.Error(secretErr.Err), logger.WithSandboxID(sandboxID), logger.WithBuildID(build.ID.String()))
+			a.sendAPIStoreError(c, secretErr.Code, secretErr.ClientMsg)
+			return
+		}
+		maps.Copy(envVars, secretEnvVars)
 	}
 
 	timeout := instance.InstanceExpiration
@@ -218,6 +234,56 @@ func (a *APIStore) getEnvdAccessToken(envdVersion *string, sandboxID string) (st
 	}
 
 	return key, nil
+}
+
+func (a *APIStore) validateAndFormat(c *gin.Context, secrets *api.Secrets, teamID uuid.UUID) (map[string]string, *api.APIError) {
+	// Pre-validate all UUIDs first
+	secretIDs := make(map[string]uuid.UUID, len(*secrets))
+	for k, id := range *secrets {
+		secretUUID, err := uuid.Parse(id)
+		if err != nil {
+			return nil, &api.APIError{
+				Code:      http.StatusBadRequest,
+				ClientMsg: "Invalid secret ID",
+				Err:       err,
+			}
+		}
+		secretIDs[k] = secretUUID
+	}
+
+	dbSecrets, err := a.db.Client.TeamSecret.Query().
+		Where(teamsecret.IDIn(slices.Collect(maps.Values(secretIDs))...)).
+		Where(teamsecret.TeamID(teamID)).
+		Select(teamsecret.FieldID).
+		All(c)
+	if err != nil {
+		return nil, &api.APIError{
+			Code:      http.StatusInternalServerError,
+			ClientMsg: "Failed to fetch secrets",
+			Err:       err,
+		}
+	}
+
+	// Build a set of found secret IDs for O(1) lookup
+	foundSecrets := make(map[string]bool, len(dbSecrets))
+	for _, secret := range dbSecrets {
+		foundSecrets[secret.ID.String()] = true
+	}
+
+	// Validate all secrets exist and build env vars
+	envVars := make(map[string]string)
+	for k, id := range *secrets {
+		if !foundSecrets[id] {
+			return nil, &api.APIError{
+				Code:      http.StatusBadRequest,
+				ClientMsg: fmt.Sprintf("Secret with ID %s not found", id),
+				Err:       fmt.Errorf("secret not found: %s", id),
+			}
+		}
+		envVars[k] = keys.SecretPrefix + id
+	}
+
+	return envVars, nil
 }
 
 func setTemplateNameMetric(c *gin.Context, aliases []string) {
