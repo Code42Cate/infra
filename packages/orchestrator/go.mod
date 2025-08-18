@@ -13,6 +13,7 @@ require (
 	github.com/e2b-dev/infra/packages/clickhouse v0.0.0
 	github.com/e2b-dev/infra/packages/shared v0.0.0
 	github.com/edsrzf/mmap-go v1.2.0
+	github.com/elazarl/goproxy v0.0.0-20180725130230-947c36da3153
 	github.com/firecracker-microvm/firecracker-go-sdk v1.0.0
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/google/go-containerregistry v0.20.6
@@ -20,6 +21,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.0
 	github.com/hashicorp/consul/api v1.30.0
+	github.com/inconshreveable/go-vhost v1.0.0
 	github.com/jellydator/ttlcache/v3 v3.3.1-0.20250207140243-aefc35918359
 	github.com/ngrok/firewall_toolkit v0.0.18
 	github.com/pkg/errors v0.9.1

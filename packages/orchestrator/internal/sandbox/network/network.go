@@ -177,6 +177,19 @@ func (s *Slot) CreateNetwork() error {
 		return fmt.Errorf("error creating postrouting rule from vpeer: %w", err)
 	}
 
+	// Add HTTP/HTTPS redirection rules for the sandbox
+	// Redirect HTTP traffic (port 80) to orch-mitm server on host
+	err = tables.Append("nat", "PREROUTING", "-i", s.VpeerName(), "-p", "tcp", "--dport", "80", "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:8080", s.HostIPString()))
+	if err != nil {
+		return fmt.Errorf("error creating HTTP redirect rule: %w", err)
+	}
+
+	// Redirect HTTPS traffic (port 443) to orch-mitm TLS server on host
+	err = tables.Append("nat", "PREROUTING", "-i", s.VpeerName(), "-p", "tcp", "--dport", "443", "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:8443", s.HostIPString()))
+	if err != nil {
+		return fmt.Errorf("error creating HTTPS redirect rule: %w", err)
+	}
+
 	err = s.InitializeFirewall()
 	if err != nil {
 		return fmt.Errorf("error initializing slot firewall: %w", err)
