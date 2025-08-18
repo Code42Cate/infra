@@ -6,6 +6,13 @@ resource "google_project_service" "secrets_manager_api" {
   disable_on_destroy = false
 }
 
+# Enable Cloud KMS API
+resource "google_project_service" "cloudkms_api" {
+  service = "cloudkms.googleapis.com"
+
+  disable_on_destroy = false
+}
+
 # Enable Certificate Manager API
 resource "google_project_service" "certificate_manager_api" {
   #project = var.gcp_project_id
@@ -239,4 +246,137 @@ resource "google_secret_manager_secret_version" "notification_email_value" {
   secret_data = "placeholder@example.com"
 }
 
+# GCP KMS resources for Vault auto-unseal
+resource "google_kms_key_ring" "vault" {
+  name     = "${var.prefix}vault-keyring"
+  location = var.gcp_region
+  project  = var.gcp_project_id
+}
 
+resource "google_kms_crypto_key" "vault_unseal" {
+  name            = "${var.prefix}vault-unseal-key"
+  key_ring        = google_kms_key_ring.vault.id
+  rotation_period = "7776000s" # 90 days
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# Get the default compute service account
+data "google_compute_default_service_account" "default" {
+  project = var.gcp_project_id
+}
+
+# Grant the compute service account permissions to use the KMS key
+resource "google_kms_crypto_key_iam_member" "vault_unseal" {
+  crypto_key_id = google_kms_crypto_key.vault_unseal.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${data.google_compute_default_service_account.default.email}"
+}
+
+# Grant the compute service account permissions to view the KMS key
+resource "google_kms_crypto_key_iam_member" "vault_unseal_viewer" {
+  crypto_key_id = google_kms_crypto_key.vault_unseal.id
+  role          = "roles/cloudkms.viewer"
+  member        = "serviceAccount:${data.google_compute_default_service_account.default.email}"
+}
+
+# Grant the infra instances service account permissions to use the KMS key
+resource "google_kms_crypto_key_iam_member" "vault_unseal_infra_instances" {
+  crypto_key_id = google_kms_crypto_key.vault_unseal.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${google_service_account.infra_instances_service_account.email}"
+}
+
+# Grant the infra instances service account permissions to view the KMS key
+resource "google_kms_crypto_key_iam_member" "vault_unseal_infra_instances_viewer" {
+  crypto_key_id = google_kms_crypto_key.vault_unseal.id
+  role          = "roles/cloudkms.viewer"
+  member        = "serviceAccount:${google_service_account.infra_instances_service_account.email}"
+}
+
+# Secret for storing Vault root keys
+resource "google_secret_manager_secret" "vault_root_key" {
+  secret_id = "${var.prefix}vault-root-key"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "vault_root_key" {
+  secret      = google_secret_manager_secret.vault_root_key.name
+  secret_data = " "
+
+  lifecycle {
+    ignore_changes = [secret_data]
+  }
+
+}
+
+# Secret for storing Vault recovery keys
+resource "google_secret_manager_secret" "vault_recovery_keys" {
+  secret_id = "${var.prefix}vault-recovery-keys"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "vault_recovery_keys" {
+  secret = google_secret_manager_secret.vault_recovery_keys.name
+  secret_data = jsonencode({
+    recovery_keys = []
+  })
+
+  lifecycle {
+    ignore_changes = [secret_data]
+  }
+}
+
+# Secret for storing Vault API service AppRole credentials
+resource "google_secret_manager_secret" "vault_api_approle" {
+  secret_id = "${var.prefix}vault-api-approle"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "vault_api_approle" {
+  secret = google_secret_manager_secret.vault_api_approle.name
+  secret_data = jsonencode({
+    role_id     = ""
+    secret_id   = ""
+    role        = "api-service"
+    permissions = ["write", "delete"]
+  })
+
+  lifecycle {
+    ignore_changes = [secret_data]
+  }
+}
+
+# Secret for storing Vault Orchestrator service AppRole credentials
+resource "google_secret_manager_secret" "vault_orchestrator_approle" {
+  secret_id = "${var.prefix}vault-orchestrator-approle"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "vault_orchestrator_approle" {
+  secret = google_secret_manager_secret.vault_orchestrator_approle.name
+  secret_data = jsonencode({
+    role_id     = ""
+    secret_id   = ""
+    role        = "orchestrator-service"
+    permissions = ["read"]
+  })
+
+  lifecycle {
+    ignore_changes = [secret_data]
+  }
+}

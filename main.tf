@@ -63,6 +63,9 @@ module "init" {
 
   labels = var.labels
   prefix = var.prefix
+
+  gcp_project_id = var.gcp_project_id
+  gcp_region     = var.gcp_region
 }
 
 module "buckets" {
@@ -177,6 +180,15 @@ module "nomad" {
   otel_tracing_print            = var.otel_tracing_print
   orchestration_repository_name = module.init.orchestration_repository_name
 
+  # Vault Configuration
+  vault_version               = var.vault_version
+  vault_port                  = var.vault_port
+  vault_cluster_port          = var.vault_cluster_port
+  vault_resources             = var.vault_resources
+  vault_kms_keyring           = module.init.vault_kms_keyring
+  vault_kms_crypto_key        = module.init.vault_kms_crypto_key
+  vault_api_approle_secret_id = module.init.vault_api_approle_secret_id
+
   # Clickhouse
   clickhouse_resources_cpu_count   = var.clickhouse_resources_cpu_count
   clickhouse_resources_memory_mb   = var.clickhouse_resources_memory_mb
@@ -251,6 +263,10 @@ module "nomad" {
   redis_port = var.redis_port
 
   launch_darkly_api_key_secret_name = module.init.launch_darkly_api_key_secret_version.secret
+}
+
+module "vault" {
+  source = "./packages/vault"
 }
 
 module "redis" {

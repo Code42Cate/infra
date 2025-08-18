@@ -47,6 +47,10 @@ data "google_secret_manager_secret_version" "redis_url" {
   secret = var.redis_url_secret_version.secret
 }
 
+data "google_secret_manager_secret_version" "vault_api_approle" {
+  secret = var.vault_api_approle_secret_id
+}
+
 
 data "docker_registry_image" "api_image" {
   name = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${var.orchestration_repository_name}/api:latest"
@@ -99,6 +103,8 @@ resource "nomad_job" "api" {
     sandbox_access_token_hash_seed = var.sandbox_access_token_hash_seed
     db_migrator_docker_image       = docker_image.db_migrator_image.repo_digest
     launch_darkly_api_key          = trimspace(data.google_secret_manager_secret_version.launch_darkly_api_key.secret_data)
+    vault_addr                     = "http://vault.service.consul:8200"
+    vault_api_approle_creds        = data.google_secret_manager_secret_version.vault_api_approle.secret_data
   })
 }
 
@@ -672,4 +678,36 @@ resource "nomad_job" "clickhouse_migrator" {
 
     clickhouse_connection_string = local.clickhouse_connection_string
   })
+}
+
+# Vault Configuration
+locals {
+  vault_config = templatefile("${path.module}/../vault/configs/vault-config.hcl", {
+    vault_port         = var.vault_port.port
+    vault_cluster_port = var.vault_cluster_port.port
+    consul_acl_token   = var.consul_acl_token_secret
+    gcp_project_id     = var.gcp_project_id
+    gcp_region         = var.gcp_region
+    kms_keyring        = var.vault_kms_keyring
+    kms_crypto_key     = var.vault_kms_crypto_key
+  })
+}
+
+resource "nomad_job" "vault" {
+  count = 1
+
+  jobspec = templatefile("${path.module}/../vault/vault.hcl", {
+    gcp_zone           = var.gcp_zone
+    vault_server_count = var.vault_server_count
+    vault_port         = var.vault_port.port
+    vault_cluster_port = var.vault_cluster_port.port
+    vault_version      = var.vault_version
+    memory             = var.vault_resources.memory
+    memory_max         = var.vault_resources.memory_max
+    cpu                = var.vault_resources.cpu
+    vault_config       = local.vault_config
+    consul_acl_token   = var.consul_acl_token_secret
+  })
+
+  purge_on_destroy = true
 }
