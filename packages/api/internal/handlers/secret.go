@@ -64,7 +64,7 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 		return
 	}
 
-	secret, fullValue, err := team.CreateSecret(ctx, a.db, teamID, body.Name, body.Value, body.Hosts)
+	secret, fullValue, err := team.CreateSecret(ctx, a.db, a.secretVault, teamID, body.Name, body.Value, body.Hosts)
 	if err != nil {
 		a.sendAPIStoreError(c, http.StatusInternalServerError, fmt.Sprintf("Error when creating team secret: %s", err))
 
@@ -90,6 +90,7 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 
 func (a *APIStore) DeleteSecretsSecretID(c *gin.Context, secretID string) {
 	ctx := c.Request.Context()
+	teamID := a.GetTeamInfo(c).Team.ID
 
 	secretIDParsed, err := uuid.Parse(secretID)
 	if err != nil {
@@ -99,15 +100,16 @@ func (a *APIStore) DeleteSecretsSecretID(c *gin.Context, secretID string) {
 		return
 	}
 
-	err = a.db.Client.TeamSecret.DeleteOneID(secretIDParsed).Exec(ctx)
-	if models.IsNotFound(err) {
-		c.String(http.StatusNotFound, "id not found")
-		return
-	} else if err != nil {
-		a.sendAPIStoreError(c, http.StatusInternalServerError, fmt.Sprintf("Error when deleting secret: %s", err))
+	if err := team.DeleteSecret(ctx, a.db, a.secretVault, secretIDParsed, teamID); err != nil {
+		if models.IsNotFound(err) {
+			c.String(http.StatusNotFound, "id not found")
+			return
+		} else if err != nil {
+			a.sendAPIStoreError(c, http.StatusInternalServerError, fmt.Sprintf("Error when deleting secret: %s", err))
 
-		telemetry.ReportCriticalError(ctx, "error when deleting secret", err)
-		return
+			telemetry.ReportCriticalError(ctx, "error when deleting secret", err)
+			return
+		}
 	}
 
 	c.Status(http.StatusNoContent)

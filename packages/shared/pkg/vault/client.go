@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/hashicorp/vault-client-go"
 	"github.com/hashicorp/vault-client-go/schema"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -21,7 +19,6 @@ const SECRET_KEY = "value"
 type Client struct {
 	client        *vault.Client
 	logger        *zap.Logger
-	mu            sync.RWMutex
 	secretsEngine string
 	renewTicker   *time.Ticker
 	stopRenew     chan struct{}
@@ -104,9 +101,7 @@ func NewClientFromEnv(ctx context.Context) (*Client, error) {
 	return NewClient(ctx, config)
 }
 
-var (
-	ErrAuthResponseMissing = errors.New("authentication response missing auth data")
-)
+var ErrAuthResponseMissing = errors.New("authentication response missing auth data")
 
 // authenticate performs AppRole authentication and sets up token renewal
 func (c *Client) authenticate(ctx context.Context, roleID, secretID string) error {
@@ -141,9 +136,7 @@ func (c *Client) startTokenRenewal(ctx context.Context, leaseDuration time.Durat
 	// Renew at 2/3 of the lease duration
 	renewInterval := max(leaseDuration*2/3, time.Minute)
 
-	c.mu.Lock()
 	c.renewTicker = time.NewTicker(renewInterval)
-	c.mu.Unlock()
 
 	go func() {
 		for {
@@ -183,9 +176,6 @@ var (
 
 // GetSecret retrieves a secret and its unseralized metadata from Vault at the specified path
 func (c *Client) GetSecret(ctx context.Context, path string) (string, map[string]any, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	resp, err := c.client.Secrets.KvV2Read(ctx, path, vault.WithMountPath(c.secretsEngine))
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to read secret")
@@ -209,15 +199,11 @@ func (c *Client) GetSecret(ctx context.Context, path string) (string, map[string
 
 // WriteSecret writes a secret to Vault at the specified path, metadata will be serialized as key=json
 func (c *Client) WriteSecret(ctx context.Context, path string, value string, metadata map[string]any) error {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	_, err := c.client.Secrets.KvV2Write(ctx, path, schema.KvV2WriteRequest{
 		Data: map[string]any{
 			SECRET_KEY: value,
 		},
 	}, vault.WithMountPath(c.secretsEngine))
-
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to write secret at path %s", path))
 	}
@@ -251,9 +237,6 @@ func (c *Client) WriteSecret(ctx context.Context, path string, value string, met
 
 // DeleteSecret deletes a secret and all its versions from Vault at the specified path
 func (c *Client) DeleteSecret(ctx context.Context, path string) error {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	// Delete all versions of the secret
 	_, err := c.client.Secrets.KvV2DeleteMetadataAndAllVersions(ctx, path, vault.WithMountPath(c.secretsEngine))
 	if err != nil {
@@ -266,9 +249,6 @@ func (c *Client) DeleteSecret(ctx context.Context, path string) error {
 
 // Close stops token renewal and cleans up resources
 func (c *Client) Close() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	close(c.stopRenew)
 
 	if c.renewTicker != nil {

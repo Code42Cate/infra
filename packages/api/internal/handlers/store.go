@@ -36,6 +36,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/env"
 	featureflags "github.com/e2b-dev/infra/packages/shared/pkg/feature-flags"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
+	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
 var supabaseJWTSecretsString = strings.TrimSpace(os.Getenv("SUPABASE_JWT_SECRETS"))
@@ -63,6 +64,7 @@ type APIStore struct {
 	templateBuildsCache      *templatecache.TemplatesBuildCache
 	authCache                *authcache.TeamAuthCache
 	templateSpawnCounter     *utils.TemplateSpawnCounter
+	secretVault              *vault.Client
 	clickhouseStore          clickhouse.Clickhouse
 	envdAccessTokenGenerator *sandbox.EnvdAccessTokenGenerator
 	featureFlags             *featureflags.Client
@@ -183,6 +185,12 @@ func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
 		zap.L().Fatal("failed to create feature flags client", zap.Error(err))
 	}
 
+	secretVault, err := vault.NewClientFromEnv(ctx)
+	if err != nil {
+		zap.L().Fatal("failed to create secret vault client", zap.Error(err))
+	}
+	zap.L().Info("Secret vault client initialized")
+
 	a := &APIStore{
 		Healthy:                  false,
 		orchestrator:             orch,
@@ -200,6 +208,7 @@ func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
 		clickhouseStore:          clickhouseStore,
 		envdAccessTokenGenerator: accessTokenGenerator,
 		clustersPool:             clustersPool,
+		secretVault:              secretVault,
 		featureFlags:             featureFlags,
 	}
 
