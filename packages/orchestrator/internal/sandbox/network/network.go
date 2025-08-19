@@ -177,19 +177,6 @@ func (s *Slot) CreateNetwork() error {
 		return fmt.Errorf("error creating postrouting rule from vpeer: %w", err)
 	}
 
-	// Add HTTP/HTTPS redirection rules for the sandbox
-	// Redirect HTTP traffic (port 80) to orch-mitm server on host
-	err = tables.Append("nat", "PREROUTING", "-i", s.VpeerName(), "-p", "tcp", "--dport", "80", "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:8080", s.HostIPString()))
-	if err != nil {
-		return fmt.Errorf("error creating HTTP redirect rule: %w", err)
-	}
-
-	// Redirect HTTPS traffic (port 443) to orch-mitm TLS server on host
-	err = tables.Append("nat", "PREROUTING", "-i", s.VpeerName(), "-p", "tcp", "--dport", "443", "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:8443", s.HostIPString()))
-	if err != nil {
-		return fmt.Errorf("error creating HTTPS redirect rule: %w", err)
-	}
-
 	err = s.InitializeFirewall()
 	if err != nil {
 		return fmt.Errorf("error initializing slot firewall: %w", err)
@@ -208,6 +195,17 @@ func (s *Slot) CreateNetwork() error {
 	})
 	if err != nil {
 		return fmt.Errorf("error adding route from host to FC: %w", err)
+	}
+
+	// Transparent MITM proxy - redirect traffic to unique ports per sandbox
+	err = tables.Append("nat", "PREROUTING", "-i", s.VethName(), "-p", "tcp", "--dport", "443", "-j", "REDIRECT", "--to-port", fmt.Sprintf("%d", s.mitmProxyHTTPSPort))
+	if err != nil {
+		return fmt.Errorf("error creating transparent proxy redirect rule for HTTPS: %w", err)
+	}
+
+	err = tables.Append("nat", "PREROUTING", "-i", s.VethName(), "-p", "tcp", "--dport", "80", "-j", "REDIRECT", "--to-port", fmt.Sprintf("%d", s.mitmProxyHTTPPort))
+	if err != nil {
+		return fmt.Errorf("error creating transparent proxy redirect rule: %w", err)
 	}
 
 	// Add host forwarding rules
@@ -251,6 +249,18 @@ func (s *Slot) RemoveNetwork() error {
 		err = tables.Delete("filter", "FORWARD", "-i", defaultGateway, "-o", s.VethName(), "-j", "ACCEPT")
 		if err != nil {
 			errs = append(errs, fmt.Errorf("error deleting host forwarding rule from default gateway: %w", err))
+		}
+
+		// Delete transparent proxy rules for this sandbox's specific ports
+
+		err = tables.Delete("nat", "PREROUTING", "-i", s.VethName(), "-p", "tcp", "--dport", "443", "-j", "REDIRECT", "--to-port", fmt.Sprintf("%d", s.mitmProxyHTTPSPort))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("error deleting transparent proxy redirect rule for HTTPS: %w", err))
+		}
+
+		err = tables.Delete("nat", "PREROUTING", "-i", s.VethName(), "-p", "tcp", "--dport", "80", "-j", "REDIRECT", "--to-port", fmt.Sprintf("%d", s.mitmProxyHTTPPort))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("error deleting transparent proxy redirect rule: %w", err))
 		}
 
 		// Delete host postrouting rules

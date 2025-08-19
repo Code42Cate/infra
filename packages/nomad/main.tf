@@ -51,6 +51,10 @@ data "google_secret_manager_secret_version" "vault_api_approle" {
   secret = var.vault_api_approle_secret_id
 }
 
+data "google_secret_manager_secret_version" "vault_orchestrator_approle" {
+  secret = var.vault_orchestrator_approle_secret_id
+}
+
 
 data "docker_registry_image" "api_image" {
   name = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${var.orchestration_repository_name}/api:latest"
@@ -404,17 +408,20 @@ locals {
     environment      = var.environment
     consul_acl_token = var.consul_acl_token_secret
 
-    envd_timeout                 = var.envd_timeout
-    bucket_name                  = var.fc_env_pipeline_bucket_name
-    orchestrator_checksum        = data.external.orchestrator_checksum.result.hex
-    logs_collector_address       = "http://localhost:${var.logs_proxy_port.port}"
-    logs_collector_public_ip     = var.logs_proxy_address
-    otel_tracing_print           = var.otel_tracing_print
-    template_bucket_name         = var.template_bucket_name
-    otel_collector_grpc_endpoint = "localhost:${var.otel_collector_grpc_port}"
-    allow_sandbox_internet       = var.allow_sandbox_internet
-    launch_darkly_api_key        = trimspace(data.google_secret_manager_secret_version.launch_darkly_api_key.secret_data)
-    clickhouse_connection_string = var.clickhouse_server_count > 0 ? "clickhouse://${var.clickhouse_username}:${random_password.clickhouse_password.result}@clickhouse.service.consul:${var.clickhouse_server_port.port}/${var.clickhouse_database}" : ""
+    envd_timeout                     = var.envd_timeout
+    bucket_name                      = var.fc_env_pipeline_bucket_name
+    orchestrator_checksum            = data.external.orchestrator_checksum.result.hex
+    logs_collector_address           = "http://localhost:${var.logs_proxy_port.port}"
+    logs_collector_public_ip         = var.logs_proxy_address
+    otel_tracing_print               = var.otel_tracing_print
+    template_bucket_name             = var.template_bucket_name
+    otel_collector_grpc_endpoint     = "localhost:${var.otel_collector_grpc_port}"
+    allow_sandbox_internet           = var.allow_sandbox_internet
+    launch_darkly_api_key            = trimspace(data.google_secret_manager_secret_version.launch_darkly_api_key.secret_data)
+    clickhouse_connection_string     = var.clickhouse_server_count > 0 ? "clickhouse://${var.clickhouse_username}:${random_password.clickhouse_password.result}@clickhouse.service.consul:${var.clickhouse_server_port.port}/${var.clickhouse_database}" : ""
+    vault_addr                       = "http://vault.service.consul:8200"
+    vault_api_approle_creds          = data.google_secret_manager_secret_version.vault_api_approle.secret_data
+    vault_orchestrator_approle_creds = data.google_secret_manager_secret_version.vault_orchestrator_approle.secret_data
   }
 
   orchestrator_job_check = templatefile("${path.module}/orchestrator.hcl", merge(

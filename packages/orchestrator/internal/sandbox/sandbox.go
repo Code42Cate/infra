@@ -17,6 +17,7 @@ import (
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/block"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/build"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/fc"
+	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/mitm"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/nbd"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/network"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/rootfs"
@@ -211,6 +212,12 @@ func CreateSandbox(
 	if ips.err != nil {
 		return nil, fmt.Errorf("failed to get network slot: %w", err)
 	}
+
+	proxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+	cleanup.Add(func(ctx context.Context) error {
+		return proxy.Close(ctx)
+	})
+
 	fcHandle, err := fc.NewProcess(
 		childCtx,
 		tracer,
@@ -403,6 +410,12 @@ func ResumeSandbox(
 	if ips.err != nil {
 		return nil, fmt.Errorf("failed to get network slot: %w", err)
 	}
+
+	proxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+	cleanup.Add(func(ctx context.Context) error {
+		return proxy.Close(ctx)
+	})
+
 	fcHandle, fcErr := fc.NewProcess(
 		uffdStartCtx,
 		tracer,

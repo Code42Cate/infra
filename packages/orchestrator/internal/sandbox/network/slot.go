@@ -59,6 +59,9 @@ type Slot struct {
 	// firewallCustomRules is used to track if custom firewall rules are set for the slot and need a cleanup.
 	firewallCustomRules atomic.Bool
 
+	mitmProxyHTTPPort  uint
+	mitmProxyHTTPSPort uint
+
 	vPeerIp net.IP
 	vEthIp  net.IP
 	vrtMask net.IPMask
@@ -115,6 +118,9 @@ func NewSlot(key string, idx int) (*Slot, error) {
 		Key: key,
 		Idx: idx,
 
+		mitmProxyHTTPPort:  10000 + uint(idx*2),
+		mitmProxyHTTPSPort: 10000 + uint(idx*2+1),
+
 		vPeerIp: vPeerIp,
 		vEthIp:  vEthIp,
 		vrtMask: vrtNet.Mask,
@@ -128,6 +134,14 @@ func NewSlot(key string, idx int) (*Slot, error) {
 	}
 
 	return slot, nil
+}
+
+func (s *Slot) MitmProxyHTTPPort() uint {
+	return s.mitmProxyHTTPPort
+}
+
+func (s *Slot) MitmProxyHTTPSPort() uint {
+	return s.mitmProxyHTTPSPort
 }
 
 func (s *Slot) VpeerName() string {

@@ -369,3 +369,8 @@ variable "vault_api_approle_secret_id" {
   type        = string
   description = "GCP Secret Manager secret ID for Vault API AppRole credentials"
 }
+
+variable "vault_orchestrator_approle_secret_id" {
+  type        = string
+  description = "GCP Secret Manager secret ID for Vault Orchestrator AppRole credentials"
+}

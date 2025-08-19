@@ -181,13 +181,14 @@ module "nomad" {
   orchestration_repository_name = module.init.orchestration_repository_name
 
   # Vault Configuration
-  vault_version               = var.vault_version
-  vault_port                  = var.vault_port
-  vault_cluster_port          = var.vault_cluster_port
-  vault_resources             = var.vault_resources
-  vault_kms_keyring           = module.init.vault_kms_keyring
-  vault_kms_crypto_key        = module.init.vault_kms_crypto_key
-  vault_api_approle_secret_id = module.init.vault_api_approle_secret_id
+  vault_version                        = var.vault_version
+  vault_port                           = var.vault_port
+  vault_cluster_port                   = var.vault_cluster_port
+  vault_resources                      = var.vault_resources
+  vault_kms_keyring                    = module.init.vault_kms_keyring
+  vault_kms_crypto_key                 = module.init.vault_kms_crypto_key
+  vault_api_approle_secret_id          = module.init.vault_api_approle_secret_id
+  vault_orchestrator_approle_secret_id = module.init.vault_orchestrator_approle_secret_id
 
   # Clickhouse
   clickhouse_resources_cpu_count   = var.clickhouse_resources_cpu_count

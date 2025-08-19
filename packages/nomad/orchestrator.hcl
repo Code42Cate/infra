@@ -72,6 +72,9 @@ EOT
         OTEL_COLLECTOR_GRPC_ENDPOINT = "${otel_collector_grpc_endpoint}"
         ALLOW_SANDBOX_INTERNET       = "${allow_sandbox_internet}"
         CLICKHOUSE_CONNECTION_STRING = "${clickhouse_connection_string}"
+        VAULT_ADDR                   = "${vault_addr}"
+        VAULT_APPROLE_ROLE_ID        = "${jsondecode(vault_orchestrator_approle_creds).role_id}"
+        VAULT_APPROLE_SECRET_ID      = "${jsondecode(vault_orchestrator_approle_creds).secret_id}"
 
 %{ if launch_darkly_api_key != "" }
         LAUNCH_DARKLY_API_KEY         = "${launch_darkly_api_key}"

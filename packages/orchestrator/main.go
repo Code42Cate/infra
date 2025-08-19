@@ -22,7 +22,6 @@ import (
 	"github.com/e2b-dev/infra/packages/clickhouse/pkg/batcher"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/grpcserver"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/metrics"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/mitm"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox"
 	blockmetrics "github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/block/metrics"
@@ -238,7 +237,7 @@ func run(port, proxyPort, mitmHttpPort, mitmHttpsPort uint) (success bool) {
 		zap.L().Fatal("failed to create sandbox proxy", zap.Error(err))
 	}
 
-	go mitm.NewMITMProxy(mitmHttpPort, mitmHttpsPort)
+	//	go mitm.NewMITMProxy(mitmHttpPort, mitmHttpsPort, sandboxes)
 
 	tracer := tel.TracerProvider.Tracer(serviceName)
 
