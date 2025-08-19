@@ -492,20 +492,23 @@ resource "nomad_job" "template_manager" {
     environment      = var.environment
     consul_acl_token = var.consul_acl_token_secret
 
-    api_secret                   = var.api_secret
-    bucket_name                  = var.fc_env_pipeline_bucket_name
-    docker_registry              = var.custom_envs_repository_name
-    google_service_account_key   = var.google_service_account_key
-    template_manager_checksum    = data.external.template_manager.result.hex
-    otel_tracing_print           = var.otel_tracing_print
-    template_bucket_name         = var.template_bucket_name
-    build_cache_bucket_name      = var.build_cache_bucket_name
-    otel_collector_grpc_endpoint = "localhost:${var.otel_collector_grpc_port}"
-    logs_collector_address       = "http://localhost:${var.logs_proxy_port.port}"
-    logs_collector_public_ip     = var.logs_proxy_address
-    orchestrator_services        = "template-manager"
-    allow_sandbox_internet       = var.allow_sandbox_internet
-    clickhouse_connection_string = local.clickhouse_connection_string
+    api_secret                       = var.api_secret
+    bucket_name                      = var.fc_env_pipeline_bucket_name
+    docker_registry                  = var.custom_envs_repository_name
+    google_service_account_key       = var.google_service_account_key
+    template_manager_checksum        = data.external.template_manager.result.hex
+    otel_tracing_print               = var.otel_tracing_print
+    template_bucket_name             = var.template_bucket_name
+    build_cache_bucket_name          = var.build_cache_bucket_name
+    vault_addr                       = "http://vault.service.consul:8200"
+    vault_api_approle_creds          = data.google_secret_manager_secret_version.vault_api_approle.secret_data
+    vault_orchestrator_approle_creds = data.google_secret_manager_secret_version.vault_orchestrator_approle.secret_data
+    otel_collector_grpc_endpoint     = "localhost:${var.otel_collector_grpc_port}"
+    logs_collector_address           = "http://localhost:${var.logs_proxy_port.port}"
+    logs_collector_public_ip         = var.logs_proxy_address
+    orchestrator_services            = "template-manager"
+    allow_sandbox_internet           = var.allow_sandbox_internet
+    clickhouse_connection_string     = local.clickhouse_connection_string
   })
 }
 resource "nomad_job" "loki" {
