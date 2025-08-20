@@ -48,10 +48,8 @@ type Closeable interface {
 }
 
 const (
-	defaultPort          = 5008
-	defaultProxyPort     = 5007
-	defaultMitmHttpPort  = 8080
-	defaultMitmHttpsPort = 8443
+	defaultPort      = 5008
+	defaultProxyPort = 5007
 
 	version = "0.1.0"
 
@@ -66,8 +64,6 @@ var (
 func main() {
 	port := flag.Uint("port", defaultPort, "orchestrator server port")
 	proxyPort := flag.Uint("proxy-port", defaultProxyPort, "orchestrator proxy port")
-	mitmHttpPort := flag.Uint("mitm-http-port", defaultMitmHttpPort, "orchestrator mitm http port")
-	mitmHttpsPort := flag.Uint("mitm-https-port", defaultMitmHttpsPort, "orchestrator mitm https port")
 
 	flag.Parse()
 
@@ -79,15 +75,7 @@ func main() {
 		log.Fatalf("%d is larger than maximum possible proxy port %d", proxyPort, math.MaxInt16)
 	}
 
-	if *mitmHttpPort > math.MaxUint16 {
-		log.Fatalf("%d is larger than maximum possible mitm http port %d", mitmHttpPort, math.MaxInt16)
-	}
-
-	if *mitmHttpsPort > math.MaxUint16 {
-		log.Fatalf("%d is larger than maximum possible mitm https port %d", mitmHttpsPort, math.MaxInt16)
-	}
-
-	success := run(*port, *proxyPort, *mitmHttpPort, *mitmHttpsPort)
+	success := run(*port, *proxyPort)
 
 	log.Println("Stopping orchestrator, success:", success)
 
@@ -96,7 +84,7 @@ func main() {
 	}
 }
 
-func run(port, proxyPort, mitmHttpPort, mitmHttpsPort uint) (success bool) {
+func run(port, proxyPort uint) (success bool) {
 	success = true
 
 	services := service.GetServices()
