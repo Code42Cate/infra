@@ -35,14 +35,8 @@ func (a *APIStore) GetSecrets(c *gin.Context) {
 	secrets := make([]api.Secret, len(secretsDB))
 	for i, secret := range secretsDB {
 		secrets[i] = api.Secret{
-			Id:   secret.ID,
-			Name: secret.Name,
-			Mask: api.IdentifierMaskingDetails{
-				Prefix:            secret.SecretPrefix,
-				ValueLength:       secret.SecretLength,
-				MaskedValuePrefix: secret.SecretMaskPrefix,
-				MaskedValueSuffix: secret.SecretMaskSuffix,
-			},
+			Id:        secret.ID,
+			Name:      secret.Name,
 			Hosts:     secret.Hosts,
 			CreatedAt: secret.CreatedAt,
 		}
@@ -74,15 +68,9 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, api.CreatedSecret{
-		Id:    secret.ID,
-		Name:  secret.Name,
-		Value: fullValue, // Only returned on creation
-		Mask: api.IdentifierMaskingDetails{
-			Prefix:            secret.SecretPrefix,
-			ValueLength:       secret.SecretLength,
-			MaskedValuePrefix: secret.SecretMaskPrefix,
-			MaskedValueSuffix: secret.SecretMaskSuffix,
-		},
+		Id:        secret.ID,
+		Name:      secret.Name,
+		Value:     fullValue, // Only returned on creation
 		Hosts:     secret.Hosts,
 		CreatedAt: secret.CreatedAt,
 	})

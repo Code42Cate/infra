@@ -77,6 +77,15 @@ type EnvBuild struct {
 	Reason             *string
 }
 
+type Secret struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt *time.Time
+	TeamID    uuid.UUID
+	Name      string
+	Hosts     []string
+}
+
 type Snapshot struct {
 	CreatedAt           pgtype.Timestamptz
 	EnvID               string

@@ -5,10 +5,6 @@
 CREATE TABLE IF NOT EXISTS "public"."secrets"
 (
     "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-    "secret_prefix" character varying(11) NOT NULL,
-    "secret_length" integer NOT NULL,
-    "secret_mask_prefix" character varying(5) NOT NULL,
-    "secret_mask_suffix" character varying(5) NOT NULL,
     "created_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" timestamptz NULL,
     "team_id" uuid NOT NULL,

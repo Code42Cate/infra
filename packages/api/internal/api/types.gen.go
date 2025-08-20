@@ -87,8 +87,7 @@ type CreatedSecret struct {
 	Hosts []string `json:"hosts"`
 
 	// Id Identifier of the secret
-	Id   openapi_types.UUID       `json:"id"`
-	Mask IdentifierMaskingDetails `json:"mask"`
+	Id openapi_types.UUID `json:"id"`
 
 	// Name Name of the secret
 	Name string `json:"name"`
@@ -510,8 +509,7 @@ type Secret struct {
 	Hosts []string `json:"hosts"`
 
 	// Id Identifier of the secret
-	Id   openapi_types.UUID       `json:"id"`
-	Mask IdentifierMaskingDetails `json:"mask"`
+	Id openapi_types.UUID `json:"id"`
 
 	// Name Name of the secret
 	Name string `json:"name"`
