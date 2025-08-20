@@ -1020,7 +1020,6 @@ components:
       required:
         - id
         - name
-        - mask
         - hosts
         - createdAt
       properties:
@@ -1031,8 +1030,6 @@ components:
         name:
           type: string
           description: Name of the secret
-        mask:
-          $ref: "#/components/schemas/IdentifierMaskingDetails"
         hosts:
           type: array
           items:
@@ -1047,7 +1044,6 @@ components:
       required:
         - id
         - value
-        - mask
         - name
         - hosts
         - createdAt
@@ -1059,8 +1055,6 @@ components:
         value:
           type: string
           description: Raw value of the secret (only shown on creation)
-        mask:
-          $ref: "#/components/schemas/IdentifierMaskingDetails"
         name:
           type: string
           description: Name of the secret
