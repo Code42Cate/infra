@@ -28,6 +28,8 @@ func NewMITMProxy(s *network.Slot, teamID string, sandboxID string) *MITMProxy {
 
 	ctx := context.Background()
 
+	// if the vault client cant be created, we fail and sandbox doesn't start. Maybe it would make sense to ignore it and continue without it
+	// this would mean secret injection won't properly work but at least the sandbox will start
 	vaultClient, err := vault.NewClientFromEnv(ctx)
 	if err != nil {
 		zap.L().Error("Failed to create Vault client", zap.Error(err))

@@ -3,10 +3,13 @@ package mitm
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/elazarl/goproxy"
 	"go.uber.org/zap"
@@ -38,18 +41,38 @@ func configureProxy(proxy *goproxy.ProxyHttpServer, caCert tls.Certificate, vaul
 
 	// Process E2B headers with secrets
 	proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+		requestHost, _, _ := net.SplitHostPort(req.Host)
+		if requestHost == "" {
+			requestHost = req.Host
+		}
+
 		zap.L().Info("Handling request with sandbox ID from header",
-			zap.String("host", req.Host),
+			zap.String("host", requestHost),
 			zap.String("sandboxID", sandboxID),
 			zap.String("teamID", teamID),
 		)
 
 		processE2BHeaders(req.Header, func(uuid string) (string, error) {
-			secret, _, err := vaultClient.GetSecret(req.Context(), fmt.Sprintf("%s/%s", teamID, uuid))
+			secret, metadata, err := vaultClient.GetSecret(req.Context(), fmt.Sprintf("%s/%s", teamID, uuid))
 			if err != nil {
 				return "", err
 			}
-			return secret, nil
+
+			hosts, err := extractHostsFromMetadata(metadata)
+			if err != nil {
+				return "", err
+			}
+
+			// Check if the request host matches any of the allowed glob patterns
+			for _, pattern := range hosts {
+				pattern = strings.TrimSpace(pattern)
+				// not sure if filepath.Match is a good idea here but it works :D
+				if matched, err := filepath.Match(pattern, requestHost); err == nil && matched {
+					return secret, nil
+				}
+			}
+
+			return "", fmt.Errorf("request host %s does not match any allowed pattern", requestHost)
 		})
 
 		return req, nil
@@ -79,4 +102,26 @@ func connectDial(ctx context.Context, proxy *goproxy.ProxyHttpServer, network, a
 		return dial(ctx, proxy, network, addr)
 	}
 	return proxy.ConnectDial(network, addr)
+}
+
+func extractHostsFromMetadata(metadata map[string]interface{}) ([]string, error) {
+	// Extract custom_metadata first
+	customMetadata, ok := metadata["custom_metadata"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid metadata, missing custom_metadata")
+	}
+
+	// Extract hosts JSON string from custom_metadata
+	hostsJSON, ok := customMetadata["hosts"].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid metadata, missing or invalid hosts in custom_metadata")
+	}
+
+	// Parse JSON string to get hosts slice
+	var hosts []string
+	if err := json.Unmarshal([]byte(hostsJSON), &hosts); err != nil {
+		return nil, fmt.Errorf("invalid metadata, hosts is not a valid json array: %v", err)
+	}
+
+	return hosts, nil
 }

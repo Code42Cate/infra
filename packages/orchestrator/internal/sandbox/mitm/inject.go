@@ -4,13 +4,15 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/e2b-dev/infra/packages/shared/pkg/keys"
 )
 
 type SecretResolver func(uuid string) (string, error)
 
 func processE2BHeaders(headers http.Header, resolver SecretResolver) {
 	// the placeholders are the uuidv4 ids of the secrets in postgres with the format e2b_<uuid>
-	uuidRegex := regexp.MustCompile(`e2b_([[:xdigit:]]{8}(?:\-[[:xdigit:]]{4}){3}\-[[:xdigit:]]{12})`)
+	uuidRegex := regexp.MustCompile(keys.SecretPrefix + `([[:xdigit:]]{8}(?:\-[[:xdigit:]]{4}){3}\-[[:xdigit:]]{12})`)
 
 	for headerName, headerValues := range headers {
 		for i, value := range headerValues {
