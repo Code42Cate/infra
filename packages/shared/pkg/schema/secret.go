@@ -21,11 +21,6 @@ func (Secret) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).Immutable().Unique().Annotations(entsql.Default("gen_random_uuid()")),
 
-		field.String("secret_prefix").Immutable().SchemaType(map[string]string{dialect.Postgres: "character varying(10)"}),
-		field.Int("secret_length").Immutable(),
-		field.String("secret_mask_prefix").Immutable().SchemaType(map[string]string{dialect.Postgres: "character varying(5)"}),
-		field.String("secret_mask_suffix").Immutable().SchemaType(map[string]string{dialect.Postgres: "character varying(5)"}),
-
 		field.Time("created_at").Immutable().Default(time.Now).Annotations(
 			entsql.Default("CURRENT_TIMESTAMP"),
 		),
