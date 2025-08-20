@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -176,11 +177,11 @@ var (
 // GetSecret retrieves a secret and its unseralized metadata from Vault at the specified path
 func (c *Client) GetSecret(ctx context.Context, path string) (string, map[string]any, error) {
 	resp, err := c.client.Secrets.KvV2Read(ctx, path, vault.WithMountPath(c.secretsEngine))
-	if err != nil {
+	if err != nil && !vault.IsErrorStatus(err, http.StatusNotFound) {
 		return "", nil, errors.Wrap(err, "failed to read secret")
 	}
 
-	if resp == nil || resp.Data.Data == nil {
+	if resp == nil || resp.Data.Data == nil || vault.IsErrorStatus(err, http.StatusNotFound) {
 		return "", nil, ErrSecretNotFound
 	}
 
