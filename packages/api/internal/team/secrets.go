@@ -10,12 +10,12 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/db"
 	"github.com/e2b-dev/infra/packages/shared/pkg/keys"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models"
-	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamsecret"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
-func CreateSecret(ctx context.Context, db *db.DB, secretVault *vault.Client, teamID uuid.UUID, name string, value string, hosts []string) (*models.TeamSecret, string, error) {
+func CreateSecret(ctx context.Context, db *db.DB, secretVault *vault.Client, teamID uuid.UUID, name string, value string, hosts []string) (*models.Secret, string, error) {
 	// Generate masked properties from the provided value
 	maskedProperties, err := keys.MaskKey(keys.SecretPrefix, value)
 	if err != nil {
@@ -24,7 +24,7 @@ func CreateSecret(ctx context.Context, db *db.DB, secretVault *vault.Client, tea
 	}
 
 	// Create the secret record (only storing metadata, not the actual value)
-	secret, err := db.Client.TeamSecret.
+	secret, err := db.Client.Secret.
 		Create().
 		SetTeamID(teamID).
 		SetSecretPrefix(maskedProperties.Prefix).
@@ -56,7 +56,7 @@ func CreateSecret(ctx context.Context, db *db.DB, secretVault *vault.Client, tea
 var ErrSecretNotFound = errors.New("secret not found")
 
 func DeleteSecret(ctx context.Context, db *db.DB, secretVault *vault.Client, teamID uuid.UUID, secretID uuid.UUID) error {
-	err := db.Client.TeamSecret.DeleteOneID(secretID).Where(teamsecret.TeamID(teamID)).Exec(ctx)
+	err := db.Client.Secret.DeleteOneID(secretID).Where(secret.TeamID(teamID)).Exec(ctx)
 	if err != nil {
 		if models.IsNotFound(err) {
 			return ErrSecretNotFound

@@ -24,7 +24,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/keys"
 	"github.com/e2b-dev/infra/packages/shared/pkg/logger"
 	sbxlogger "github.com/e2b-dev/infra/packages/shared/pkg/logger/sandbox"
-	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamsecret"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 	sharedUtils "github.com/e2b-dev/infra/packages/shared/pkg/utils"
 )
@@ -251,10 +251,10 @@ func (a *APIStore) validateAndFormat(c *gin.Context, secrets *api.Secrets, teamI
 		secretIDs[k] = secretUUID
 	}
 
-	dbSecrets, err := a.db.Client.TeamSecret.Query().
-		Where(teamsecret.IDIn(slices.Collect(maps.Values(secretIDs))...)).
-		Where(teamsecret.TeamID(teamID)).
-		Select(teamsecret.FieldID).
+	dbSecrets, err := a.db.Client.Secret.Query().
+		Where(secret.IDIn(slices.Collect(maps.Values(secretIDs))...)).
+		Where(secret.TeamID(teamID)).
+		Select(secret.FieldID).
 		All(c)
 	if err != nil {
 		return nil, &api.APIError{

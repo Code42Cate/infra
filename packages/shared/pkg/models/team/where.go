@@ -555,27 +555,27 @@ func HasTeamAPIKeysWith(preds ...predicate.TeamAPIKey) predicate.Team {
 	})
 }
 
-// HasTeamSecrets applies the HasEdge predicate on the "team_secrets" edge.
-func HasTeamSecrets() predicate.Team {
+// HasSecrets applies the HasEdge predicate on the "secrets" edge.
+func HasSecrets() predicate.Team {
 	return predicate.Team(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, TeamSecretsTable, TeamSecretsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, SecretsTable, SecretsColumn),
 		)
 		schemaConfig := internal.SchemaConfigFromContext(s.Context())
-		step.To.Schema = schemaConfig.TeamSecret
-		step.Edge.Schema = schemaConfig.TeamSecret
+		step.To.Schema = schemaConfig.Secret
+		step.Edge.Schema = schemaConfig.Secret
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasTeamSecretsWith applies the HasEdge predicate on the "team_secrets" edge with a given conditions (other predicates).
-func HasTeamSecretsWith(preds ...predicate.TeamSecret) predicate.Team {
+// HasSecretsWith applies the HasEdge predicate on the "secrets" edge with a given conditions (other predicates).
+func HasSecretsWith(preds ...predicate.Secret) predicate.Team {
 	return predicate.Team(func(s *sql.Selector) {
-		step := newTeamSecretsStep()
+		step := newSecretsStep()
 		schemaConfig := internal.SchemaConfigFromContext(s.Context())
-		step.To.Schema = schemaConfig.TeamSecret
-		step.Edge.Schema = schemaConfig.TeamSecret
+		step.To.Schema = schemaConfig.Secret
+		step.Edge.Schema = schemaConfig.Secret
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

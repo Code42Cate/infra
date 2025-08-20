@@ -22,14 +22,14 @@ type Tx struct {
 	EnvAlias *EnvAliasClient
 	// EnvBuild is the client for interacting with the EnvBuild builders.
 	EnvBuild *EnvBuildClient
+	// Secret is the client for interacting with the Secret builders.
+	Secret *SecretClient
 	// Snapshot is the client for interacting with the Snapshot builders.
 	Snapshot *SnapshotClient
 	// Team is the client for interacting with the Team builders.
 	Team *TeamClient
 	// TeamAPIKey is the client for interacting with the TeamAPIKey builders.
 	TeamAPIKey *TeamAPIKeyClient
-	// TeamSecret is the client for interacting with the TeamSecret builders.
-	TeamSecret *TeamSecretClient
 	// Tier is the client for interacting with the Tier builders.
 	Tier *TierClient
 	// User is the client for interacting with the User builders.
@@ -172,10 +172,10 @@ func (tx *Tx) init() {
 	tx.Env = NewEnvClient(tx.config)
 	tx.EnvAlias = NewEnvAliasClient(tx.config)
 	tx.EnvBuild = NewEnvBuildClient(tx.config)
+	tx.Secret = NewSecretClient(tx.config)
 	tx.Snapshot = NewSnapshotClient(tx.config)
 	tx.Team = NewTeamClient(tx.config)
 	tx.TeamAPIKey = NewTeamAPIKeyClient(tx.config)
-	tx.TeamSecret = NewTeamSecretClient(tx.config)
 	tx.Tier = NewTierClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UsersTeams = NewUsersTeamsClient(tx.config)

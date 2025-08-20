@@ -13,11 +13,11 @@ import (
 	"github.com/lib/pq"
 )
 
-type TeamSecret struct {
+type Secret struct {
 	ent.Schema
 }
 
-func (TeamSecret) Fields() []ent.Field {
+func (Secret) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).Immutable().Unique().Annotations(entsql.Default("gen_random_uuid()")),
 
@@ -36,19 +36,19 @@ func (TeamSecret) Fields() []ent.Field {
 	}
 }
 
-func (TeamSecret) Edges() []ent.Edge {
+func (Secret) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("team", Team.Type).Unique().Required().
-			Ref("team_secrets").
+			Ref("secrets").
 			Field("team_id"),
 	}
 }
 
-func (TeamSecret) Annotations() []schema.Annotation {
+func (Secret) Annotations() []schema.Annotation {
 	return nil
 }
 
-func (TeamSecret) Mixin() []ent.Mixin {
+func (Secret) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		Mixin{},
 	}

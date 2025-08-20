@@ -24,7 +24,6 @@ type Client struct {
 	stopRenew     chan struct{}
 }
 
-// ClientConfig holds configuration for the Vault client
 type ClientConfig struct {
 	// Vault server address (e.g., "http://vault.service.consul:8200")
 	Address string

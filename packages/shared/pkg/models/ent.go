@@ -17,10 +17,10 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/env"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/envalias"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/envbuild"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/snapshot"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
-	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamsecret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/tier"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/usersteams"
@@ -89,10 +89,10 @@ func checkColumn(table, column string) error {
 			env.Table:         env.ValidColumn,
 			envalias.Table:    envalias.ValidColumn,
 			envbuild.Table:    envbuild.ValidColumn,
+			secret.Table:      secret.ValidColumn,
 			snapshot.Table:    snapshot.ValidColumn,
 			team.Table:        team.ValidColumn,
 			teamapikey.Table:  teamapikey.ValidColumn,
-			teamsecret.Table:  teamsecret.ValidColumn,
 			tier.Table:        tier.ValidColumn,
 			user.Table:        user.ValidColumn,
 			usersteams.Table:  usersteams.ValidColumn,

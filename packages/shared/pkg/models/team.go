@@ -47,8 +47,8 @@ type TeamEdges struct {
 	Users []*User `json:"users,omitempty"`
 	// TeamAPIKeys holds the value of the team_api_keys edge.
 	TeamAPIKeys []*TeamAPIKey `json:"team_api_keys,omitempty"`
-	// TeamSecrets holds the value of the team_secrets edge.
-	TeamSecrets []*TeamSecret `json:"team_secrets,omitempty"`
+	// Secrets holds the value of the secrets edge.
+	Secrets []*Secret `json:"secrets,omitempty"`
 	// TeamTier holds the value of the team_tier edge.
 	TeamTier *Tier `json:"team_tier,omitempty"`
 	// Envs holds the value of the envs edge.
@@ -78,13 +78,13 @@ func (e TeamEdges) TeamAPIKeysOrErr() ([]*TeamAPIKey, error) {
 	return nil, &NotLoadedError{edge: "team_api_keys"}
 }
 
-// TeamSecretsOrErr returns the TeamSecrets value or an error if the edge
+// SecretsOrErr returns the Secrets value or an error if the edge
 // was not loaded in eager-loading.
-func (e TeamEdges) TeamSecretsOrErr() ([]*TeamSecret, error) {
+func (e TeamEdges) SecretsOrErr() ([]*Secret, error) {
 	if e.loadedTypes[2] {
-		return e.TeamSecrets, nil
+		return e.Secrets, nil
 	}
-	return nil, &NotLoadedError{edge: "team_secrets"}
+	return nil, &NotLoadedError{edge: "secrets"}
 }
 
 // TeamTierOrErr returns the TeamTier value or an error if the edge
@@ -227,9 +227,9 @@ func (t *Team) QueryTeamAPIKeys() *TeamAPIKeyQuery {
 	return NewTeamClient(t.config).QueryTeamAPIKeys(t)
 }
 
-// QueryTeamSecrets queries the "team_secrets" edge of the Team entity.
-func (t *Team) QueryTeamSecrets() *TeamSecretQuery {
-	return NewTeamClient(t.config).QueryTeamSecrets(t)
+// QuerySecrets queries the "secrets" edge of the Team entity.
+func (t *Team) QuerySecrets() *SecretQuery {
+	return NewTeamClient(t.config).QuerySecrets(t)
 }
 
 // QueryTeamTier queries the "team_tier" edge of the Team entity.

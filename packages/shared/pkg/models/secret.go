@@ -9,14 +9,14 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
-	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamsecret"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
-// TeamSecret is the model entity for the TeamSecret schema.
-type TeamSecret struct {
+// Secret is the model entity for the Secret schema.
+type Secret struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
@@ -39,13 +39,13 @@ type TeamSecret struct {
 	// Hosts holds the value of the "hosts" field.
 	Hosts pq.StringArray `json:"hosts,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
-	// The values are being populated by the TeamSecretQuery when eager-loading is set.
-	Edges        TeamSecretEdges `json:"edges"`
+	// The values are being populated by the SecretQuery when eager-loading is set.
+	Edges        SecretEdges `json:"edges"`
 	selectValues sql.SelectValues
 }
 
-// TeamSecretEdges holds the relations/edges for other nodes in the graph.
-type TeamSecretEdges struct {
+// SecretEdges holds the relations/edges for other nodes in the graph.
+type SecretEdges struct {
 	// Team holds the value of the team edge.
 	Team *Team `json:"team,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -55,7 +55,7 @@ type TeamSecretEdges struct {
 
 // TeamOrErr returns the Team value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e TeamSecretEdges) TeamOrErr() (*Team, error) {
+func (e SecretEdges) TeamOrErr() (*Team, error) {
 	if e.loadedTypes[0] {
 		if e.Team == nil {
 			// Edge was loaded but was not found.
@@ -67,19 +67,19 @@ func (e TeamSecretEdges) TeamOrErr() (*Team, error) {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*TeamSecret) scanValues(columns []string) ([]any, error) {
+func (*Secret) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case teamsecret.FieldHosts:
+		case secret.FieldHosts:
 			values[i] = new(pq.StringArray)
-		case teamsecret.FieldSecretLength:
+		case secret.FieldSecretLength:
 			values[i] = new(sql.NullInt64)
-		case teamsecret.FieldSecretPrefix, teamsecret.FieldSecretMaskPrefix, teamsecret.FieldSecretMaskSuffix, teamsecret.FieldName:
+		case secret.FieldSecretPrefix, secret.FieldSecretMaskPrefix, secret.FieldSecretMaskSuffix, secret.FieldName:
 			values[i] = new(sql.NullString)
-		case teamsecret.FieldCreatedAt, teamsecret.FieldUpdatedAt:
+		case secret.FieldCreatedAt, secret.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case teamsecret.FieldID, teamsecret.FieldTeamID:
+		case secret.FieldID, secret.FieldTeamID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -89,146 +89,146 @@ func (*TeamSecret) scanValues(columns []string) ([]any, error) {
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
-// to the TeamSecret fields.
-func (ts *TeamSecret) assignValues(columns []string, values []any) error {
+// to the Secret fields.
+func (s *Secret) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
 	for i := range columns {
 		switch columns[i] {
-		case teamsecret.FieldID:
+		case secret.FieldID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				ts.ID = *value
+				s.ID = *value
 			}
-		case teamsecret.FieldSecretPrefix:
+		case secret.FieldSecretPrefix:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field secret_prefix", values[i])
 			} else if value.Valid {
-				ts.SecretPrefix = value.String
+				s.SecretPrefix = value.String
 			}
-		case teamsecret.FieldSecretLength:
+		case secret.FieldSecretLength:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field secret_length", values[i])
 			} else if value.Valid {
-				ts.SecretLength = int(value.Int64)
+				s.SecretLength = int(value.Int64)
 			}
-		case teamsecret.FieldSecretMaskPrefix:
+		case secret.FieldSecretMaskPrefix:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field secret_mask_prefix", values[i])
 			} else if value.Valid {
-				ts.SecretMaskPrefix = value.String
+				s.SecretMaskPrefix = value.String
 			}
-		case teamsecret.FieldSecretMaskSuffix:
+		case secret.FieldSecretMaskSuffix:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field secret_mask_suffix", values[i])
 			} else if value.Valid {
-				ts.SecretMaskSuffix = value.String
+				s.SecretMaskSuffix = value.String
 			}
-		case teamsecret.FieldCreatedAt:
+		case secret.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				ts.CreatedAt = value.Time
+				s.CreatedAt = value.Time
 			}
-		case teamsecret.FieldUpdatedAt:
+		case secret.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				ts.UpdatedAt = new(time.Time)
-				*ts.UpdatedAt = value.Time
+				s.UpdatedAt = new(time.Time)
+				*s.UpdatedAt = value.Time
 			}
-		case teamsecret.FieldTeamID:
+		case secret.FieldTeamID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field team_id", values[i])
 			} else if value != nil {
-				ts.TeamID = *value
+				s.TeamID = *value
 			}
-		case teamsecret.FieldName:
+		case secret.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
-				ts.Name = value.String
+				s.Name = value.String
 			}
-		case teamsecret.FieldHosts:
+		case secret.FieldHosts:
 			if value, ok := values[i].(*pq.StringArray); !ok {
 				return fmt.Errorf("unexpected type %T for field hosts", values[i])
 			} else if value != nil {
-				ts.Hosts = *value
+				s.Hosts = *value
 			}
 		default:
-			ts.selectValues.Set(columns[i], values[i])
+			s.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
 }
 
-// Value returns the ent.Value that was dynamically selected and assigned to the TeamSecret.
+// Value returns the ent.Value that was dynamically selected and assigned to the Secret.
 // This includes values selected through modifiers, order, etc.
-func (ts *TeamSecret) Value(name string) (ent.Value, error) {
-	return ts.selectValues.Get(name)
+func (s *Secret) Value(name string) (ent.Value, error) {
+	return s.selectValues.Get(name)
 }
 
-// QueryTeam queries the "team" edge of the TeamSecret entity.
-func (ts *TeamSecret) QueryTeam() *TeamQuery {
-	return NewTeamSecretClient(ts.config).QueryTeam(ts)
+// QueryTeam queries the "team" edge of the Secret entity.
+func (s *Secret) QueryTeam() *TeamQuery {
+	return NewSecretClient(s.config).QueryTeam(s)
 }
 
-// Update returns a builder for updating this TeamSecret.
-// Note that you need to call TeamSecret.Unwrap() before calling this method if this TeamSecret
+// Update returns a builder for updating this Secret.
+// Note that you need to call Secret.Unwrap() before calling this method if this Secret
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (ts *TeamSecret) Update() *TeamSecretUpdateOne {
-	return NewTeamSecretClient(ts.config).UpdateOne(ts)
+func (s *Secret) Update() *SecretUpdateOne {
+	return NewSecretClient(s.config).UpdateOne(s)
 }
 
-// Unwrap unwraps the TeamSecret entity that was returned from a transaction after it was closed,
+// Unwrap unwraps the Secret entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (ts *TeamSecret) Unwrap() *TeamSecret {
-	_tx, ok := ts.config.driver.(*txDriver)
+func (s *Secret) Unwrap() *Secret {
+	_tx, ok := s.config.driver.(*txDriver)
 	if !ok {
-		panic("models: TeamSecret is not a transactional entity")
+		panic("models: Secret is not a transactional entity")
 	}
-	ts.config.driver = _tx.drv
-	return ts
+	s.config.driver = _tx.drv
+	return s
 }
 
 // String implements the fmt.Stringer.
-func (ts *TeamSecret) String() string {
+func (s *Secret) String() string {
 	var builder strings.Builder
-	builder.WriteString("TeamSecret(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", ts.ID))
+	builder.WriteString("Secret(")
+	builder.WriteString(fmt.Sprintf("id=%v, ", s.ID))
 	builder.WriteString("secret_prefix=")
-	builder.WriteString(ts.SecretPrefix)
+	builder.WriteString(s.SecretPrefix)
 	builder.WriteString(", ")
 	builder.WriteString("secret_length=")
-	builder.WriteString(fmt.Sprintf("%v", ts.SecretLength))
+	builder.WriteString(fmt.Sprintf("%v", s.SecretLength))
 	builder.WriteString(", ")
 	builder.WriteString("secret_mask_prefix=")
-	builder.WriteString(ts.SecretMaskPrefix)
+	builder.WriteString(s.SecretMaskPrefix)
 	builder.WriteString(", ")
 	builder.WriteString("secret_mask_suffix=")
-	builder.WriteString(ts.SecretMaskSuffix)
+	builder.WriteString(s.SecretMaskSuffix)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
-	builder.WriteString(ts.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(s.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := ts.UpdatedAt; v != nil {
+	if v := s.UpdatedAt; v != nil {
 		builder.WriteString("updated_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
 	builder.WriteString("team_id=")
-	builder.WriteString(fmt.Sprintf("%v", ts.TeamID))
+	builder.WriteString(fmt.Sprintf("%v", s.TeamID))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
-	builder.WriteString(ts.Name)
+	builder.WriteString(s.Name)
 	builder.WriteString(", ")
 	builder.WriteString("hosts=")
-	builder.WriteString(fmt.Sprintf("%v", ts.Hosts))
+	builder.WriteString(fmt.Sprintf("%v", s.Hosts))
 	builder.WriteByte(')')
 	return builder.String()
 }
 
-// TeamSecrets is a parsable slice of TeamSecret.
-type TeamSecrets []*TeamSecret
+// Secrets is a parsable slice of Secret.
+type Secrets []*Secret

@@ -1016,7 +1016,7 @@ components:
           type: string
           description: New name for the API key
 
-    TeamSecret:
+    Secret:
       required:
         - id
         - name
@@ -1043,7 +1043,7 @@ components:
           format: date-time
           description: When the secret was created
 
-    CreatedTeamSecret:
+    CreatedSecret:
       required:
         - id
         - value
@@ -1074,7 +1074,7 @@ components:
           format: date-time
           description: When the secret was created
 
-    NewTeamSecret:
+    NewSecret:
       required:
         - name
         - value
@@ -2067,7 +2067,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/TeamSecret"
+                  $ref: "#/components/schemas/Secret"
         "401":
           $ref: "#/components/responses/401"
         "500":
@@ -2084,14 +2084,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/NewTeamSecret"
+              $ref: "#/components/schemas/NewSecret"
       responses:
         "201":
           description: Team secret created successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreatedTeamSecret"
+                $ref: "#/components/schemas/CreatedSecret"
         "401":
           $ref: "#/components/responses/401"
         "500":

@@ -12,7 +12,7 @@ import (
 	"github.com/e2b-dev/infra/packages/api/internal/team"
 	"github.com/e2b-dev/infra/packages/api/internal/utils"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models"
-	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamsecret"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 )
 
@@ -21,9 +21,9 @@ func (a *APIStore) GetSecrets(c *gin.Context) {
 
 	teamID := a.GetTeamInfo(c).Team.ID
 
-	secretsDB, err := a.db.Client.TeamSecret.
+	secretsDB, err := a.db.Client.Secret.
 		Query().
-		Where(teamsecret.TeamID(teamID)).
+		Where(secret.TeamID(teamID)).
 		All(ctx)
 	if err != nil {
 		zap.L().Warn("error when getting team secrets", zap.Error(err))
@@ -32,9 +32,9 @@ func (a *APIStore) GetSecrets(c *gin.Context) {
 		return
 	}
 
-	teamSecrets := make([]api.TeamSecret, len(secretsDB))
+	secrets := make([]api.Secret, len(secretsDB))
 	for i, secret := range secretsDB {
-		teamSecrets[i] = api.TeamSecret{
+		secrets[i] = api.Secret{
 			Id:   secret.ID,
 			Name: secret.Name,
 			Mask: api.IdentifierMaskingDetails{
@@ -47,7 +47,7 @@ func (a *APIStore) GetSecrets(c *gin.Context) {
 			CreatedAt: secret.CreatedAt,
 		}
 	}
-	c.JSON(http.StatusOK, teamSecrets)
+	c.JSON(http.StatusOK, secrets)
 }
 
 func (a *APIStore) PostSecrets(c *gin.Context) {
@@ -55,7 +55,7 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 
 	teamID := a.GetTeamInfo(c).Team.ID
 
-	body, err := utils.ParseBody[api.NewTeamSecret](ctx, c)
+	body, err := utils.ParseBody[api.NewSecret](ctx, c)
 	if err != nil {
 		a.sendAPIStoreError(c, http.StatusBadRequest, fmt.Sprintf("Error when parsing request: %s", err))
 
@@ -73,7 +73,7 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, api.CreatedTeamSecret{
+	c.JSON(http.StatusCreated, api.CreatedSecret{
 		Id:    secret.ID,
 		Name:  secret.Name,
 		Value: fullValue, // Only returned on creation
