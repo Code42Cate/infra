@@ -20,14 +20,6 @@ type Secret struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
-	// SecretPrefix holds the value of the "secret_prefix" field.
-	SecretPrefix string `json:"secret_prefix,omitempty"`
-	// SecretLength holds the value of the "secret_length" field.
-	SecretLength int `json:"secret_length,omitempty"`
-	// SecretMaskPrefix holds the value of the "secret_mask_prefix" field.
-	SecretMaskPrefix string `json:"secret_mask_prefix,omitempty"`
-	// SecretMaskSuffix holds the value of the "secret_mask_suffix" field.
-	SecretMaskSuffix string `json:"secret_mask_suffix,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -73,9 +65,7 @@ func (*Secret) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case secret.FieldHosts:
 			values[i] = new(pq.StringArray)
-		case secret.FieldSecretLength:
-			values[i] = new(sql.NullInt64)
-		case secret.FieldSecretPrefix, secret.FieldSecretMaskPrefix, secret.FieldSecretMaskSuffix, secret.FieldName:
+		case secret.FieldName:
 			values[i] = new(sql.NullString)
 		case secret.FieldCreatedAt, secret.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -101,30 +91,6 @@ func (s *Secret) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
 				s.ID = *value
-			}
-		case secret.FieldSecretPrefix:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field secret_prefix", values[i])
-			} else if value.Valid {
-				s.SecretPrefix = value.String
-			}
-		case secret.FieldSecretLength:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field secret_length", values[i])
-			} else if value.Valid {
-				s.SecretLength = int(value.Int64)
-			}
-		case secret.FieldSecretMaskPrefix:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field secret_mask_prefix", values[i])
-			} else if value.Valid {
-				s.SecretMaskPrefix = value.String
-			}
-		case secret.FieldSecretMaskSuffix:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field secret_mask_suffix", values[i])
-			} else if value.Valid {
-				s.SecretMaskSuffix = value.String
 			}
 		case secret.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -198,18 +164,6 @@ func (s *Secret) String() string {
 	var builder strings.Builder
 	builder.WriteString("Secret(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", s.ID))
-	builder.WriteString("secret_prefix=")
-	builder.WriteString(s.SecretPrefix)
-	builder.WriteString(", ")
-	builder.WriteString("secret_length=")
-	builder.WriteString(fmt.Sprintf("%v", s.SecretLength))
-	builder.WriteString(", ")
-	builder.WriteString("secret_mask_prefix=")
-	builder.WriteString(s.SecretMaskPrefix)
-	builder.WriteString(", ")
-	builder.WriteString("secret_mask_suffix=")
-	builder.WriteString(s.SecretMaskSuffix)
-	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(s.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")

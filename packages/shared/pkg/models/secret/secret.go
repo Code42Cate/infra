@@ -14,14 +14,6 @@ const (
 	Label = "secret"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldSecretPrefix holds the string denoting the secret_prefix field in the database.
-	FieldSecretPrefix = "secret_prefix"
-	// FieldSecretLength holds the string denoting the secret_length field in the database.
-	FieldSecretLength = "secret_length"
-	// FieldSecretMaskPrefix holds the string denoting the secret_mask_prefix field in the database.
-	FieldSecretMaskPrefix = "secret_mask_prefix"
-	// FieldSecretMaskSuffix holds the string denoting the secret_mask_suffix field in the database.
-	FieldSecretMaskSuffix = "secret_mask_suffix"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -48,10 +40,6 @@ const (
 // Columns holds all SQL columns for secret fields.
 var Columns = []string{
 	FieldID,
-	FieldSecretPrefix,
-	FieldSecretLength,
-	FieldSecretMaskPrefix,
-	FieldSecretMaskSuffix,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldTeamID,
@@ -82,26 +70,6 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
-}
-
-// BySecretPrefix orders the results by the secret_prefix field.
-func BySecretPrefix(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSecretPrefix, opts...).ToFunc()
-}
-
-// BySecretLength orders the results by the secret_length field.
-func BySecretLength(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSecretLength, opts...).ToFunc()
-}
-
-// BySecretMaskPrefix orders the results by the secret_mask_prefix field.
-func BySecretMaskPrefix(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSecretMaskPrefix, opts...).ToFunc()
-}
-
-// BySecretMaskSuffix orders the results by the secret_mask_suffix field.
-func BySecretMaskSuffix(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSecretMaskSuffix, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

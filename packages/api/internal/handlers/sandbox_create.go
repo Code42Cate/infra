@@ -244,7 +244,7 @@ func (a *APIStore) validateAndFormat(c *gin.Context, secrets *api.Secrets, teamI
 		if err != nil {
 			return nil, &api.APIError{
 				Code:      http.StatusBadRequest,
-				ClientMsg: "Invalid secret ID",
+				ClientMsg: "Value needs to be a valid UUID referencing a secret: https://e2b.dev/docs/secret",
 				Err:       err,
 			}
 		}

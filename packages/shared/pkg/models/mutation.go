@@ -4681,24 +4681,19 @@ func (m *EnvBuildMutation) ResetEdge(name string) error {
 // SecretMutation represents an operation that mutates the Secret nodes in the graph.
 type SecretMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *uuid.UUID
-	secret_prefix      *string
-	secret_length      *int
-	addsecret_length   *int
-	secret_mask_prefix *string
-	secret_mask_suffix *string
-	created_at         *time.Time
-	updated_at         *time.Time
-	name               *string
-	hosts              *pq.StringArray
-	clearedFields      map[string]struct{}
-	team               *uuid.UUID
-	clearedteam        bool
-	done               bool
-	oldValue           func(context.Context) (*Secret, error)
-	predicates         []predicate.Secret
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	created_at    *time.Time
+	updated_at    *time.Time
+	name          *string
+	hosts         *pq.StringArray
+	clearedFields map[string]struct{}
+	team          *uuid.UUID
+	clearedteam   bool
+	done          bool
+	oldValue      func(context.Context) (*Secret, error)
+	predicates    []predicate.Secret
 }
 
 var _ ent.Mutation = (*SecretMutation)(nil)
@@ -4803,170 +4798,6 @@ func (m *SecretMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
-}
-
-// SetSecretPrefix sets the "secret_prefix" field.
-func (m *SecretMutation) SetSecretPrefix(s string) {
-	m.secret_prefix = &s
-}
-
-// SecretPrefix returns the value of the "secret_prefix" field in the mutation.
-func (m *SecretMutation) SecretPrefix() (r string, exists bool) {
-	v := m.secret_prefix
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSecretPrefix returns the old "secret_prefix" field's value of the Secret entity.
-// If the Secret object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SecretMutation) OldSecretPrefix(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSecretPrefix is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSecretPrefix requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSecretPrefix: %w", err)
-	}
-	return oldValue.SecretPrefix, nil
-}
-
-// ResetSecretPrefix resets all changes to the "secret_prefix" field.
-func (m *SecretMutation) ResetSecretPrefix() {
-	m.secret_prefix = nil
-}
-
-// SetSecretLength sets the "secret_length" field.
-func (m *SecretMutation) SetSecretLength(i int) {
-	m.secret_length = &i
-	m.addsecret_length = nil
-}
-
-// SecretLength returns the value of the "secret_length" field in the mutation.
-func (m *SecretMutation) SecretLength() (r int, exists bool) {
-	v := m.secret_length
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSecretLength returns the old "secret_length" field's value of the Secret entity.
-// If the Secret object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SecretMutation) OldSecretLength(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSecretLength is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSecretLength requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSecretLength: %w", err)
-	}
-	return oldValue.SecretLength, nil
-}
-
-// AddSecretLength adds i to the "secret_length" field.
-func (m *SecretMutation) AddSecretLength(i int) {
-	if m.addsecret_length != nil {
-		*m.addsecret_length += i
-	} else {
-		m.addsecret_length = &i
-	}
-}
-
-// AddedSecretLength returns the value that was added to the "secret_length" field in this mutation.
-func (m *SecretMutation) AddedSecretLength() (r int, exists bool) {
-	v := m.addsecret_length
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetSecretLength resets all changes to the "secret_length" field.
-func (m *SecretMutation) ResetSecretLength() {
-	m.secret_length = nil
-	m.addsecret_length = nil
-}
-
-// SetSecretMaskPrefix sets the "secret_mask_prefix" field.
-func (m *SecretMutation) SetSecretMaskPrefix(s string) {
-	m.secret_mask_prefix = &s
-}
-
-// SecretMaskPrefix returns the value of the "secret_mask_prefix" field in the mutation.
-func (m *SecretMutation) SecretMaskPrefix() (r string, exists bool) {
-	v := m.secret_mask_prefix
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSecretMaskPrefix returns the old "secret_mask_prefix" field's value of the Secret entity.
-// If the Secret object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SecretMutation) OldSecretMaskPrefix(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSecretMaskPrefix is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSecretMaskPrefix requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSecretMaskPrefix: %w", err)
-	}
-	return oldValue.SecretMaskPrefix, nil
-}
-
-// ResetSecretMaskPrefix resets all changes to the "secret_mask_prefix" field.
-func (m *SecretMutation) ResetSecretMaskPrefix() {
-	m.secret_mask_prefix = nil
-}
-
-// SetSecretMaskSuffix sets the "secret_mask_suffix" field.
-func (m *SecretMutation) SetSecretMaskSuffix(s string) {
-	m.secret_mask_suffix = &s
-}
-
-// SecretMaskSuffix returns the value of the "secret_mask_suffix" field in the mutation.
-func (m *SecretMutation) SecretMaskSuffix() (r string, exists bool) {
-	v := m.secret_mask_suffix
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSecretMaskSuffix returns the old "secret_mask_suffix" field's value of the Secret entity.
-// If the Secret object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SecretMutation) OldSecretMaskSuffix(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSecretMaskSuffix is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSecretMaskSuffix requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSecretMaskSuffix: %w", err)
-	}
-	return oldValue.SecretMaskSuffix, nil
-}
-
-// ResetSecretMaskSuffix resets all changes to the "secret_mask_suffix" field.
-func (m *SecretMutation) ResetSecretMaskSuffix() {
-	m.secret_mask_suffix = nil
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -5223,19 +5054,7 @@ func (m *SecretMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SecretMutation) Fields() []string {
-	fields := make([]string, 0, 9)
-	if m.secret_prefix != nil {
-		fields = append(fields, secret.FieldSecretPrefix)
-	}
-	if m.secret_length != nil {
-		fields = append(fields, secret.FieldSecretLength)
-	}
-	if m.secret_mask_prefix != nil {
-		fields = append(fields, secret.FieldSecretMaskPrefix)
-	}
-	if m.secret_mask_suffix != nil {
-		fields = append(fields, secret.FieldSecretMaskSuffix)
-	}
+	fields := make([]string, 0, 5)
 	if m.created_at != nil {
 		fields = append(fields, secret.FieldCreatedAt)
 	}
@@ -5259,14 +5078,6 @@ func (m *SecretMutation) Fields() []string {
 // schema.
 func (m *SecretMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case secret.FieldSecretPrefix:
-		return m.SecretPrefix()
-	case secret.FieldSecretLength:
-		return m.SecretLength()
-	case secret.FieldSecretMaskPrefix:
-		return m.SecretMaskPrefix()
-	case secret.FieldSecretMaskSuffix:
-		return m.SecretMaskSuffix()
 	case secret.FieldCreatedAt:
 		return m.CreatedAt()
 	case secret.FieldUpdatedAt:
@@ -5286,14 +5097,6 @@ func (m *SecretMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *SecretMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case secret.FieldSecretPrefix:
-		return m.OldSecretPrefix(ctx)
-	case secret.FieldSecretLength:
-		return m.OldSecretLength(ctx)
-	case secret.FieldSecretMaskPrefix:
-		return m.OldSecretMaskPrefix(ctx)
-	case secret.FieldSecretMaskSuffix:
-		return m.OldSecretMaskSuffix(ctx)
 	case secret.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case secret.FieldUpdatedAt:
@@ -5313,34 +5116,6 @@ func (m *SecretMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *SecretMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case secret.FieldSecretPrefix:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSecretPrefix(v)
-		return nil
-	case secret.FieldSecretLength:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSecretLength(v)
-		return nil
-	case secret.FieldSecretMaskPrefix:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSecretMaskPrefix(v)
-		return nil
-	case secret.FieldSecretMaskSuffix:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSecretMaskSuffix(v)
-		return nil
 	case secret.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -5383,21 +5158,13 @@ func (m *SecretMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *SecretMutation) AddedFields() []string {
-	var fields []string
-	if m.addsecret_length != nil {
-		fields = append(fields, secret.FieldSecretLength)
-	}
-	return fields
+	return nil
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *SecretMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	case secret.FieldSecretLength:
-		return m.AddedSecretLength()
-	}
 	return nil, false
 }
 
@@ -5406,13 +5173,6 @@ func (m *SecretMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *SecretMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case secret.FieldSecretLength:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddSecretLength(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Secret numeric field %s", name)
 }
@@ -5449,18 +5209,6 @@ func (m *SecretMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *SecretMutation) ResetField(name string) error {
 	switch name {
-	case secret.FieldSecretPrefix:
-		m.ResetSecretPrefix()
-		return nil
-	case secret.FieldSecretLength:
-		m.ResetSecretLength()
-		return nil
-	case secret.FieldSecretMaskPrefix:
-		m.ResetSecretMaskPrefix()
-		return nil
-	case secret.FieldSecretMaskSuffix:
-		m.ResetSecretMaskSuffix()
-		return nil
 	case secret.FieldCreatedAt:
 		m.ResetCreatedAt()
 		return nil

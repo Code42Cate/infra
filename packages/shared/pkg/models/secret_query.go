@@ -303,12 +303,12 @@ func (sq *SecretQuery) WithTeam(opts ...func(*TeamQuery)) *SecretQuery {
 // Example:
 //
 //	var v []struct {
-//		SecretPrefix string `json:"secret_prefix,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Secret.Query().
-//		GroupBy(secret.FieldSecretPrefix).
+//		GroupBy(secret.FieldCreatedAt).
 //		Aggregate(models.Count()).
 //		Scan(ctx, &v)
 func (sq *SecretQuery) GroupBy(field string, fields ...string) *SecretGroupBy {
@@ -326,11 +326,11 @@ func (sq *SecretQuery) GroupBy(field string, fields ...string) *SecretGroupBy {
 // Example:
 //
 //	var v []struct {
-//		SecretPrefix string `json:"secret_prefix,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //	}
 //
 //	client.Secret.Query().
-//		Select(secret.FieldSecretPrefix).
+//		Select(secret.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (sq *SecretQuery) Select(fields ...string) *SecretSelect {
 	sq.ctx.Fields = append(sq.ctx.Fields, fields...)

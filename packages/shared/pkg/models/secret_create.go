@@ -26,30 +26,6 @@ type SecretCreate struct {
 	conflict []sql.ConflictOption
 }
 
-// SetSecretPrefix sets the "secret_prefix" field.
-func (sc *SecretCreate) SetSecretPrefix(s string) *SecretCreate {
-	sc.mutation.SetSecretPrefix(s)
-	return sc
-}
-
-// SetSecretLength sets the "secret_length" field.
-func (sc *SecretCreate) SetSecretLength(i int) *SecretCreate {
-	sc.mutation.SetSecretLength(i)
-	return sc
-}
-
-// SetSecretMaskPrefix sets the "secret_mask_prefix" field.
-func (sc *SecretCreate) SetSecretMaskPrefix(s string) *SecretCreate {
-	sc.mutation.SetSecretMaskPrefix(s)
-	return sc
-}
-
-// SetSecretMaskSuffix sets the "secret_mask_suffix" field.
-func (sc *SecretCreate) SetSecretMaskSuffix(s string) *SecretCreate {
-	sc.mutation.SetSecretMaskSuffix(s)
-	return sc
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (sc *SecretCreate) SetCreatedAt(t time.Time) *SecretCreate {
 	sc.mutation.SetCreatedAt(t)
@@ -162,18 +138,6 @@ func (sc *SecretCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (sc *SecretCreate) check() error {
-	if _, ok := sc.mutation.SecretPrefix(); !ok {
-		return &ValidationError{Name: "secret_prefix", err: errors.New(`models: missing required field "Secret.secret_prefix"`)}
-	}
-	if _, ok := sc.mutation.SecretLength(); !ok {
-		return &ValidationError{Name: "secret_length", err: errors.New(`models: missing required field "Secret.secret_length"`)}
-	}
-	if _, ok := sc.mutation.SecretMaskPrefix(); !ok {
-		return &ValidationError{Name: "secret_mask_prefix", err: errors.New(`models: missing required field "Secret.secret_mask_prefix"`)}
-	}
-	if _, ok := sc.mutation.SecretMaskSuffix(); !ok {
-		return &ValidationError{Name: "secret_mask_suffix", err: errors.New(`models: missing required field "Secret.secret_mask_suffix"`)}
-	}
 	if _, ok := sc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`models: missing required field "Secret.created_at"`)}
 	}
@@ -226,22 +190,6 @@ func (sc *SecretCreate) createSpec() (*Secret, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := sc.mutation.SecretPrefix(); ok {
-		_spec.SetField(secret.FieldSecretPrefix, field.TypeString, value)
-		_node.SecretPrefix = value
-	}
-	if value, ok := sc.mutation.SecretLength(); ok {
-		_spec.SetField(secret.FieldSecretLength, field.TypeInt, value)
-		_node.SecretLength = value
-	}
-	if value, ok := sc.mutation.SecretMaskPrefix(); ok {
-		_spec.SetField(secret.FieldSecretMaskPrefix, field.TypeString, value)
-		_node.SecretMaskPrefix = value
-	}
-	if value, ok := sc.mutation.SecretMaskSuffix(); ok {
-		_spec.SetField(secret.FieldSecretMaskSuffix, field.TypeString, value)
-		_node.SecretMaskSuffix = value
-	}
 	if value, ok := sc.mutation.CreatedAt(); ok {
 		_spec.SetField(secret.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -283,7 +231,7 @@ func (sc *SecretCreate) createSpec() (*Secret, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Secret.Create().
-//		SetSecretPrefix(v).
+//		SetCreatedAt(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -292,7 +240,7 @@ func (sc *SecretCreate) createSpec() (*Secret, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.SecretUpsert) {
-//			SetSecretPrefix(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (sc *SecretCreate) OnConflict(opts ...sql.ConflictOption) *SecretUpsertOne {
@@ -398,18 +346,6 @@ func (u *SecretUpsertOne) UpdateNewValues() *SecretUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.ID(); exists {
 			s.SetIgnore(secret.FieldID)
-		}
-		if _, exists := u.create.mutation.SecretPrefix(); exists {
-			s.SetIgnore(secret.FieldSecretPrefix)
-		}
-		if _, exists := u.create.mutation.SecretLength(); exists {
-			s.SetIgnore(secret.FieldSecretLength)
-		}
-		if _, exists := u.create.mutation.SecretMaskPrefix(); exists {
-			s.SetIgnore(secret.FieldSecretMaskPrefix)
-		}
-		if _, exists := u.create.mutation.SecretMaskSuffix(); exists {
-			s.SetIgnore(secret.FieldSecretMaskSuffix)
 		}
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(secret.FieldCreatedAt)
@@ -644,7 +580,7 @@ func (scb *SecretCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.SecretUpsert) {
-//			SetSecretPrefix(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (scb *SecretCreateBulk) OnConflict(opts ...sql.ConflictOption) *SecretUpsertBulk {
@@ -690,18 +626,6 @@ func (u *SecretUpsertBulk) UpdateNewValues() *SecretUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.ID(); exists {
 				s.SetIgnore(secret.FieldID)
-			}
-			if _, exists := b.mutation.SecretPrefix(); exists {
-				s.SetIgnore(secret.FieldSecretPrefix)
-			}
-			if _, exists := b.mutation.SecretLength(); exists {
-				s.SetIgnore(secret.FieldSecretLength)
-			}
-			if _, exists := b.mutation.SecretMaskPrefix(); exists {
-				s.SetIgnore(secret.FieldSecretMaskPrefix)
-			}
-			if _, exists := b.mutation.SecretMaskSuffix(); exists {
-				s.SetIgnore(secret.FieldSecretMaskSuffix)
 			}
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(secret.FieldCreatedAt)

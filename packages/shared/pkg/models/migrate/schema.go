@@ -141,10 +141,6 @@ var (
 	// SecretsColumns holds the columns for the "secrets" table.
 	SecretsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true, Default: "gen_random_uuid()"},
-		{Name: "secret_prefix", Type: field.TypeString, SchemaType: map[string]string{"postgres": "character varying(10)"}},
-		{Name: "secret_length", Type: field.TypeInt},
-		{Name: "secret_mask_prefix", Type: field.TypeString, SchemaType: map[string]string{"postgres": "character varying(5)"}},
-		{Name: "secret_mask_suffix", Type: field.TypeString, SchemaType: map[string]string{"postgres": "character varying(5)"}},
 		{Name: "created_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "name", Type: field.TypeString, Default: "Unnamed Secret", SchemaType: map[string]string{"postgres": "text"}},
@@ -159,7 +155,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "secrets_teams_secrets",
-				Columns:    []*schema.Column{SecretsColumns[9]},
+				Columns:    []*schema.Column{SecretsColumns[5]},
 				RefColumns: []*schema.Column{TeamsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
