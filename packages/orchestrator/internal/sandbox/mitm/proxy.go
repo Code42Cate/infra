@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/elazarl/goproxy"
 	"go.uber.org/zap"
@@ -53,10 +54,17 @@ func configureProxy(proxy *goproxy.ProxyHttpServer, caCert tls.Certificate, vaul
 		)
 
 		processE2BHeaders(req.Header, func(uuid string) (string, error) {
+			start := time.Now()
+
 			secret, metadata, err := vaultClient.GetSecret(req.Context(), fmt.Sprintf("%s/%s", teamID, uuid))
 			if err != nil {
 				return "", err
 			}
+
+			zap.L().Info("Retrieved secret from Vault",
+				zap.String("uuid", uuid),
+				zap.Duration("duration", time.Since(start)),
+			)
 
 			hosts, err := extractHostsFromMetadata(metadata)
 			if err != nil {

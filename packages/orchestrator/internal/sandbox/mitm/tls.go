@@ -13,12 +13,10 @@ import (
 	"github.com/elazarl/goproxy"
 	"github.com/inconshreveable/go-vhost"
 	"go.uber.org/zap"
-
-	"github.com/e2b-dev/infra/packages/shared/pkg/keys"
 )
 
-func loadCACertificate() (tls.Certificate, error) {
-	caCert, err := tls.X509KeyPair([]byte(keys.RootCert), []byte(keys.RootKey))
+func loadCACertificate(rootcert, rootkey string) (tls.Certificate, error) {
+	caCert, err := tls.X509KeyPair([]byte(rootcert), []byte(rootkey))
 	if err != nil {
 		return caCert, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
