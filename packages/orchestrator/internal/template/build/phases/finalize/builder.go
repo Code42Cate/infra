@@ -112,6 +112,10 @@ func (ppb *PostProcessingBuilder) Build(
 	currentLayer phases.LayerResult,
 	_ string,
 ) (phases.LayerResult, error) {
+
+	// ppb.BuildContext.Config.TeamID
+	// TODO: Inject cert here
+
 	// Configure sandbox for final layer
 	sbxConfig := sandbox.Config{
 		Vcpu:      ppb.Config.VCpuCount,
@@ -121,7 +125,8 @@ func (ppb *PostProcessingBuilder) Build(
 		AllowInternetAccess: &globalconfig.AllowSandboxInternet,
 
 		Envd: sandbox.EnvdMetadata{
-			Version: ppb.EnvdVersion,
+			Version:         ppb.EnvdVersion,
+			RootCertificate: "",
 		},
 	}
 

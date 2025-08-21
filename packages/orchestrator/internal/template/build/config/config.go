@@ -40,6 +40,9 @@ type TemplateConfig struct {
 
 	// Steps to build the template.
 	Steps []*templatemanager.TemplateStep
+
+	// Team the template belongs to
+	TeamID string
 }
 
 func (e TemplateConfig) MemfilePageSize() int64 {

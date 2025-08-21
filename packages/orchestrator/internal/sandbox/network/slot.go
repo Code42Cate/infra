@@ -118,6 +118,7 @@ func NewSlot(key string, idx int) (*Slot, error) {
 		Key: key,
 		Idx: idx,
 
+		// because we take 2 extra host ports per slot this will limit the amount of slots we can have and max slots should be roughly halfed (still 2^14 so probably fine)
 		mitmProxyHTTPPort:  10000 + uint(idx*2),
 		mitmProxyHTTPSPort: 10000 + uint(idx*2+1),
 

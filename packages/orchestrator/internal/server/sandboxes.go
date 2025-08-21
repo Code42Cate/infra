@@ -59,6 +59,12 @@ func (s *server) Create(ctxConn context.Context, req *orchestrator.SandboxCreate
 		return nil, fmt.Errorf("failed to get template snapshot data: %w", err)
 	}
 
+	rootCertificate, err := s.certificateCache.GetCertificate(req.Sandbox.TeamId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get root certificate: %w", err)
+	}
+	zap.L().Info("root certificate retrieved", zap.String("team_id", req.Sandbox.TeamId), zap.String("certificate", rootCertificate))
+
 	sbx, err := sandbox.ResumeSandbox(
 		childCtx,
 		s.tracer,
@@ -75,9 +81,10 @@ func (s *server) Create(ctxConn context.Context, req *orchestrator.SandboxCreate
 			AllowInternetAccess: req.Sandbox.AllowInternetAccess,
 
 			Envd: sandbox.EnvdMetadata{
-				Version:     req.Sandbox.EnvdVersion,
-				AccessToken: req.Sandbox.EnvdAccessToken,
-				Vars:        req.Sandbox.EnvVars,
+				Version:         req.Sandbox.EnvdVersion,
+				AccessToken:     req.Sandbox.EnvdAccessToken,
+				Vars:            req.Sandbox.EnvVars,
+				RootCertificate: rootCertificate,
 			},
 		},
 		sandbox.RuntimeMetadata{

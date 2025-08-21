@@ -64,6 +64,7 @@ func (s *ServerStore) TemplateCreate(ctx context.Context, templateRequest *templ
 		FromTemplate: cfg.GetFromTemplate(),
 		Force:        cfg.Force,
 		Steps:        cfg.Steps,
+		TeamID:       cfg.TeamID,
 	}
 
 	logs := cache.NewSafeBuffer()

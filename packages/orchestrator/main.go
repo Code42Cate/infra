@@ -25,6 +25,7 @@ import (
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox"
 	blockmetrics "github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/block/metrics"
+	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/mitm"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/nbd"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/network"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/template"
@@ -41,6 +42,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/smap"
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
+	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
 type Closeable interface {
@@ -313,7 +315,17 @@ func run(port, proxyPort uint) (success bool) {
 		zap.L().Fatal("failed to create sandbox observer", zap.Error(err))
 	}
 
-	_, err = server.New(ctx, grpcSrv, tel, networkPool, devicePool, templateCache, tracer, serviceInfo, sandboxProxy, sandboxes, featureFlags, clickhouseBatcher, persistence)
+	vault, err := vault.NewClientFromEnv(ctx)
+	if err != nil {
+		zap.L().Fatal("failed to create vault backend", zap.Error(err))
+	}
+
+	certificateCache, err := mitm.NewCertificateCache(ctx, vault)
+	if err != nil {
+		zap.L().Fatal("failed to create certificate cache", zap.Error(err))
+	}
+
+	_, err = server.New(ctx, grpcSrv, tel, networkPool, devicePool, certificateCache, templateCache, tracer, serviceInfo, sandboxProxy, sandboxes, featureFlags, clickhouseBatcher, persistence)
 	if err != nil {
 		zap.L().Fatal("failed to create server", zap.Error(err))
 	}

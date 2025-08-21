@@ -138,6 +138,8 @@ func (sb *StepBuilder) Build(
 	prefix := sb.Prefix()
 	step := sb.step
 
+	//sb.Config.TeamID
+
 	sbxConfig := sandbox.Config{
 		BaseTemplateID: baseTemplateID,
 
@@ -148,7 +150,8 @@ func (sb *StepBuilder) Build(
 		AllowInternetAccess: &globalconfig.AllowSandboxInternet,
 
 		Envd: sandbox.EnvdMetadata{
-			Version: sb.EnvdVersion,
+			Version:         sb.EnvdVersion,
+			RootCertificate: "",
 		},
 	}
 

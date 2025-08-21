@@ -49,6 +49,8 @@ message TemplateConfig {
   optional bool force = 12;
   repeated TemplateStep steps = 13;
 
+  string teamID = 15;
+
   oneof source {
      string fromImage = 11;
      FromTemplateConfig fromTemplate = 14;

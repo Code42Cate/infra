@@ -89,6 +89,7 @@ func (tm *TemplateManager) CreateTemplate(
 	template := &templatemanagergrpc.TemplateConfig{
 		TemplateID:         templateID,
 		BuildID:            buildID.String(),
+		TeamID:             teamID.String(),
 		VCpuCount:          int32(vCpuCount),
 		MemoryMB:           int32(memoryMB),
 		DiskSizeMB:         int32(diskSizeMB),

@@ -55,9 +55,10 @@ type Config struct {
 }
 
 type EnvdMetadata struct {
-	Vars        map[string]string
-	AccessToken *string
-	Version     string
+	Vars            map[string]string
+	AccessToken     *string
+	Version         string
+	RootCertificate string
 }
 
 type RuntimeMetadata struct {
@@ -213,10 +214,17 @@ func CreateSandbox(
 		return nil, fmt.Errorf("failed to get network slot: %w", err)
 	}
 
-	proxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
-	cleanup.Add(func(ctx context.Context) error {
-		return proxy.Close(ctx)
-	})
+	if config.Envd.RootCertificate != "" {
+		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		cleanup.Add(func(ctx context.Context) error {
+			return mitmproxy.Close(ctx)
+		})
+	} else {
+		bypassproxy := mitm.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		cleanup.Add(func(ctx context.Context) error {
+			return bypassproxy.Close(ctx)
+		})
+	}
 
 	fcHandle, err := fc.NewProcess(
 		childCtx,
@@ -411,10 +419,17 @@ func ResumeSandbox(
 		return nil, fmt.Errorf("failed to get network slot: %w", err)
 	}
 
-	proxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
-	cleanup.Add(func(ctx context.Context) error {
-		return proxy.Close(ctx)
-	})
+	if config.Envd.RootCertificate != "" {
+		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		cleanup.Add(func(ctx context.Context) error {
+			return mitmproxy.Close(ctx)
+		})
+	} else {
+		bypassproxy := mitm.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		cleanup.Add(func(ctx context.Context) error {
+			return bypassproxy.Close(ctx)
+		})
+	}
 
 	fcHandle, fcErr := fc.NewProcess(
 		uffdStartCtx,
@@ -924,7 +939,7 @@ func (s *Sandbox) WaitForEnvd(
 		}
 	}()
 
-	initErr := s.initEnvd(syncCtx, tracer, s.Config.Envd.Vars, s.Config.Envd.AccessToken)
+	initErr := s.initEnvd(syncCtx, tracer, s.Config.Envd.Vars, s.Config.Envd.AccessToken, s.Config.Envd.RootCertificate)
 	if initErr != nil {
 		return fmt.Errorf("failed to init new envd: %w", initErr)
 	} else {

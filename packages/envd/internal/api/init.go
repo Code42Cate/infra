@@ -2,14 +2,21 @@ package api
 
 import (
 	"context"
+	"crypto/sha1"
+	"crypto/x509"
+	"encoding/binary"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/e2b-dev/infra/packages/envd/internal/host"
 	"github.com/e2b-dev/infra/packages/envd/internal/logs"
+	"github.com/rs/zerolog"
 )
 
 func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +55,18 @@ func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
 			logger.Debug().Msg("Setting access token")
 			a.accessToken = initRequest.AccessToken
 		}
+
+		if initRequest.RootCertificate != nil {
+			logger.Info().Msg(*initRequest.RootCertificate)
+			if err := installCertificate(*initRequest.RootCertificate, logger); err != nil {
+				logger.Error().Msgf("Failed to install certificate: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			logger.Debug().Msg("Root certificate installed successfully")
+		}
+
 	}
 
 	logger.Debug().Msg("Syncing host")
@@ -71,4 +90,62 @@ func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "")
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func installCertificate(certificate string, logger zerolog.Logger) error {
+
+	certData := []byte(certificate)
+	sourceCert := "/usr/local/share/ca-certificates/e2b.crt"
+	certsDir := "/etc/ssl/certs"
+	pemLink := filepath.Join(certsDir, "e2b.pem")
+	bundleFile := filepath.Join(certsDir, "ca-certificates.crt")
+
+	// Write the certificate file
+	if err := os.WriteFile(sourceCert, certData, 0o644); err != nil {
+		return fmt.Errorf("failed to write certificate file: %w", err)
+	}
+
+	// 1. Create symlink to the certificate
+	os.Remove(pemLink) // Remove if exists
+	if err := os.Symlink(sourceCert, pemLink); err != nil {
+		return fmt.Errorf("failed to create PEM symlink: %w", err)
+	}
+
+	// 2. Append to the certificate bundle
+	// Ensure trailing newline
+	bundleData := certData
+	if len(bundleData) > 0 && bundleData[len(bundleData)-1] != '\n' {
+		bundleData = append(bundleData, '\n')
+	}
+
+	f, err := os.OpenFile(bundleFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open bundle file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := f.Write(bundleData); err != nil {
+		return fmt.Errorf("failed to write to bundle: %w", err)
+	}
+
+	// 3. Create hash symlink for OpenSSL compatibility
+	block, _ := pem.Decode(certData)
+	if block != nil {
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err == nil {
+			hash := sha1.Sum(cert.RawSubject)
+			hashValue := binary.LittleEndian.Uint32(hash[:4])
+			hashLink := filepath.Join(certsDir, fmt.Sprintf("%08x.0", hashValue))
+			os.Remove(hashLink) // Remove if exists
+			if err := os.Symlink("e2b.pem", hashLink); err != nil {
+				logger.Debug().Msgf("Failed to create hash symlink: %v", err)
+			}
+		} else {
+			logger.Debug().Msgf("Failed to parse certificate: %v", err)
+		}
+	} else {
+		logger.Debug().Msg("Failed to decode PEM block from certificate")
+	}
+
+	return nil
 }

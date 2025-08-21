@@ -14,7 +14,7 @@ paths:
       responses:
         "204":
           description: The service is healthy
-          
+
   /metrics:
     get:
       summary: Get the stats of the service
@@ -26,8 +26,8 @@ paths:
           description: The resource usage metrics of the service
           content:
             application/json:
-                schema:
-                  $ref: "#/components/schemas/Metrics"
+              schema:
+                $ref: "#/components/schemas/Metrics"
 
   /init:
     post:
@@ -41,6 +41,9 @@ paths:
             schema:
               type: object
               properties:
+                rootCertificate:
+                  type: string
+                  description: Root certificate for mitm proxy
                 envVars:
                   $ref: "#/components/schemas/EnvVars"
                 accessToken:
@@ -239,12 +242,12 @@ components:
           type: string
           description: Type of the file
           enum:
-              - file
+            - file
     EnvVars:
       type: object
       description: Environment variables to set
       additionalProperties:
-          type: string
+        type: string
     Metrics:
       type: object
       description: Resource usage metrics
