@@ -205,11 +205,11 @@ function create_orchestrator_approle {
   # Create Orchestrator policy with read-only permissions
   vault policy write orchestrator-service-policy - <<EOF
 path "secret/data/*" {
-  capabilities = ["read", "create", "delete"]
+  capabilities = ["create", "read", "update", "delete"]
 }
 
 path "secret/metadata/*" {
-  capabilities = ["read", "list"]
+  capabilities = ["create", "update", "delete", "read", "list"]
 }
 EOF
 
