@@ -14,11 +14,9 @@ import (
 
 	"github.com/elazarl/goproxy"
 	"go.uber.org/zap"
-
-	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
-func configureProxy(proxy *goproxy.ProxyHttpServer, caCert tls.Certificate, vaultClient *vault.Client, teamID, sandboxID string) {
+func configureProxy(proxy *goproxy.ProxyHttpServer, caCert tls.Certificate, secretsCache *SecretsCache, teamID, sandboxID string) {
 	proxy.Verbose = true
 
 	// Configure TLS actions
@@ -56,7 +54,7 @@ func configureProxy(proxy *goproxy.ProxyHttpServer, caCert tls.Certificate, vaul
 		processE2BHeaders(req.Header, func(uuid string) (string, error) {
 			start := time.Now()
 
-			secret, metadata, err := vaultClient.GetSecret(req.Context(), fmt.Sprintf("%s/%s", teamID, uuid))
+			secret, metadata, err := secretsCache.GetSecret(req.Context(), teamID, uuid)
 			if err != nil {
 				return "", err
 			}

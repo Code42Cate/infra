@@ -18,7 +18,6 @@ const (
 type CertificateCache struct {
 	cache *ttlcache.Cache[string, string]
 	vault vault.VaultBackend
-	ctx   context.Context
 }
 
 func NewCertificateCache(ctx context.Context, vault vault.VaultBackend) (*CertificateCache, error) {
@@ -33,7 +32,6 @@ func NewCertificateCache(ctx context.Context, vault vault.VaultBackend) (*Certif
 	return &CertificateCache{
 		cache: cache,
 		vault: vault,
-		ctx:   ctx,
 	}, nil
 }
 
@@ -42,6 +40,7 @@ func (c *CertificateCache) Items() map[string]*ttlcache.Item[string, string] {
 }
 
 func (c *CertificateCache) GetCertificate(
+	ctx context.Context,
 	teamId string,
 ) (string, error) {
 
@@ -55,10 +54,12 @@ func (c *CertificateCache) GetCertificate(
 		daysTTL := 365
 
 		// check if its in the vault
-		cert, _, certErr := c.vault.GetSecret(c.ctx, fmt.Sprintf("%s/cert", teamId))
-		_, _, keyErr := c.vault.GetSecret(c.ctx, fmt.Sprintf("%s/key", teamId))
+		cert, _, certErr := c.vault.GetSecret(ctx, fmt.Sprintf("%s/cert", teamId))
 
-		// TODO: Cert expiry bliblablub
+		// we dont really care about the key, just about its existence. if just the cert exists, the mitm will fail
+		_, _, keyErr := c.vault.GetSecret(ctx, fmt.Sprintf("%s/key", teamId))
+
+		// TODO: Cert expiry things
 		// no cert found, create new one and save it
 		if errors.Is(certErr, vault.ErrSecretNotFound) || errors.Is(certErr, vault.ErrSecretValueNotFound) ||
 			errors.Is(keyErr, vault.ErrSecretNotFound) || errors.Is(keyErr, vault.ErrSecretValueNotFound) {
@@ -66,10 +67,10 @@ func (c *CertificateCache) GetCertificate(
 			if err != nil {
 				return "", err
 			}
-			if err := c.vault.WriteSecret(c.ctx, fmt.Sprintf("%s/cert", teamId), newCert, nil); err != nil {
+			if err := c.vault.WriteSecret(ctx, fmt.Sprintf("%s/cert", teamId), newCert, nil); err != nil {
 				return "", err
 			}
-			if err := c.vault.WriteSecret(c.ctx, fmt.Sprintf("%s/key", teamId), newPriv, nil); err != nil {
+			if err := c.vault.WriteSecret(ctx, fmt.Sprintf("%s/key", teamId), newPriv, nil); err != nil {
 				return "", err
 			}
 			c.cache.Set(teamId, newCert, time.Duration(daysTTL)*time.Hour*24)

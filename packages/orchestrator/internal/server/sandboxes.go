@@ -59,7 +59,7 @@ func (s *server) Create(ctxConn context.Context, req *orchestrator.SandboxCreate
 		return nil, fmt.Errorf("failed to get template snapshot data: %w", err)
 	}
 
-	rootCertificate, err := s.certificateCache.GetCertificate(req.Sandbox.TeamId)
+	rootCertificate, err := s.certificateCache.GetCertificate(ctx, req.Sandbox.TeamId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get root certificate: %w", err)
 	}

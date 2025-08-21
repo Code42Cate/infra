@@ -38,6 +38,12 @@ func NewMITMProxy(s *network.Slot, teamID string, sandboxID string) *MITMProxy {
 		return nil
 	}
 
+	secretsCache, err := NewSecretsCache(ctx, vaultClient)
+	if err != nil {
+		zap.L().Error("Failed to create secrets cache", zap.Error(err))
+		return nil
+	}
+
 	zap.L().Info("Starting MITM proxy",
 		zap.String("teamID", teamID),
 		zap.String("sandboxID", sandboxID),
@@ -45,6 +51,7 @@ func NewMITMProxy(s *network.Slot, teamID string, sandboxID string) *MITMProxy {
 		zap.Uint("httpsPort", s.MitmProxyHTTPSPort()))
 
 	// At this point we know that the certificate exists. It would be nicer if we wouldnt have to make network requests to vault here but would get the certificate passed in the constructor
+	// No point in using the cache as we will only need the certificate and key once
 	priv, _, err := vaultClient.GetSecret(ctx, fmt.Sprintf("%s/key", teamID))
 	if err != nil {
 		zap.L().Error("Failed to get team root certificate key", zap.Error(err))
@@ -62,7 +69,7 @@ func NewMITMProxy(s *network.Slot, teamID string, sandboxID string) *MITMProxy {
 		return nil
 	}
 
-	configureProxy(proxy, caCert, vaultClient, teamID, sandboxID)
+	configureProxy(proxy, caCert, secretsCache, teamID, sandboxID)
 
 	if err := m.startServers(s, proxy); err != nil {
 		zap.L().Error("Failed to start servers", zap.Error(err))
