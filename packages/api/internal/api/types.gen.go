@@ -80,17 +80,20 @@ type CreatedAccessToken struct {
 
 // CreatedSecret defines model for CreatedSecret.
 type CreatedSecret struct {
+	// Allowlist List of allowlist where this secret can be used
+	Allowlist []string `json:"allowlist"`
+
 	// CreatedAt When the secret was created
 	CreatedAt time.Time `json:"createdAt"`
 
-	// Hosts List of hosts where this secret can be used
-	Hosts []string `json:"hosts"`
+	// Description Description of the secret
+	Description string `json:"description"`
 
 	// Id Identifier of the secret
 	Id openapi_types.UUID `json:"id"`
 
-	// Name Name of the secret
-	Name string `json:"name"`
+	// Label Label of the secret
+	Label string `json:"label"`
 
 	// Value Raw value of the secret (only shown on creation)
 	Value string `json:"value"`
@@ -240,11 +243,14 @@ type NewSandbox struct {
 
 // NewSecret defines model for NewSecret.
 type NewSecret struct {
-	// Hosts List of hosts where this secret can be used
-	Hosts []string `json:"hosts"`
+	// Allowlist List of allowlist where this secret can be used
+	Allowlist []string `json:"allowlist"`
 
-	// Name Name of the secret
-	Name string `json:"name"`
+	// Description Description of the secret
+	Description string `json:"description"`
+
+	// Label Label of the secret
+	Label string `json:"label"`
 
 	// Value Value of the secret
 	Value string `json:"value"`
@@ -502,17 +508,20 @@ type SandboxesWithMetrics struct {
 
 // Secret defines model for Secret.
 type Secret struct {
+	// Allowlist List of allowlist where this secret can be used
+	Allowlist []string `json:"allowlist"`
+
 	// CreatedAt When the secret was created
 	CreatedAt time.Time `json:"createdAt"`
 
-	// Hosts List of hosts where this secret can be used
-	Hosts []string `json:"hosts"`
+	// Description Description of the secret
+	Description *string `json:"description,omitempty"`
 
 	// Id Identifier of the secret
 	Id openapi_types.UUID `json:"id"`
 
-	// Name Name of the secret
-	Name string `json:"name"`
+	// Label Label of the secret
+	Label string `json:"label"`
 }
 
 // Secrets defines model for Secrets.

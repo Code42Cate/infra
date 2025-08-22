@@ -36,10 +36,11 @@ func (a *APIStore) GetSecrets(c *gin.Context) {
 	secrets := make([]api.Secret, len(secretsDB))
 	for i, secret := range secretsDB {
 		secrets[i] = api.Secret{
-			Id:        secret.ID,
-			Name:      secret.Name,
-			Hosts:     secret.Hosts,
-			CreatedAt: secret.CreatedAt,
+			Id:          secret.ID,
+			Label:       secret.Label,
+			Description: &secret.Description,
+			Allowlist:   secret.Allowlist,
+			CreatedAt:   secret.CreatedAt,
 		}
 	}
 	c.JSON(http.StatusOK, secrets)
@@ -61,17 +62,17 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 
 	// There should be a limit to how many hosts can be added to a secret. Realistically its going to be 0 or 1 in most cases, 10 is already a lot. Adjust as needed
 	maxHostsCount := 10
-	if len(body.Hosts) > maxHostsCount {
-		a.sendAPIStoreError(c, http.StatusBadRequest, fmt.Sprintf("Too many hosts (%d), only %d allowed", len(body.Hosts), maxHostsCount))
+	if len(body.Allowlist) > maxHostsCount {
+		a.sendAPIStoreError(c, http.StatusBadRequest, fmt.Sprintf("Too many hosts in allowlist (%d), only %d allowed", len(body.Allowlist), maxHostsCount))
 		return
 	}
 
 	// default value, should be done by the SDK/Dashboard/CLI but just in case
-	if len(body.Hosts) == 0 {
-		body.Hosts = []string{"*"}
+	if len(body.Allowlist) == 0 {
+		body.Allowlist = []string{"*"}
 	}
 
-	for _, host := range body.Hosts {
+	for _, host := range body.Allowlist {
 		// match continues scanning to the end of the pattern even after a mismatch, so by matching "" we can check if the host is a valid pattern
 		// https://go-review.googlesource.com/c/go/+/264397
 		if _, err := filepath.Match(host, ""); err != nil {
@@ -80,7 +81,7 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 		}
 	}
 
-	secret, fullValue, err := team.CreateSecret(ctx, a.db, a.secretVault, teamID, body.Name, body.Value, body.Hosts)
+	secret, fullValue, err := team.CreateSecret(ctx, a.db, a.secretVault, teamID, body.Value, body.Label, body.Description, body.Allowlist)
 	if err != nil {
 		a.sendAPIStoreError(c, http.StatusInternalServerError, fmt.Sprintf("Error when creating team secret: %s", err))
 
@@ -90,11 +91,12 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, api.CreatedSecret{
-		Id:        secret.ID,
-		Name:      secret.Name,
-		Value:     fullValue, // Only returned on creation
-		Hosts:     secret.Hosts,
-		CreatedAt: secret.CreatedAt,
+		Id:          secret.ID,
+		Label:       secret.Label,
+		Description: secret.Description,
+		Value:       fullValue, // Only returned on creation
+		Allowlist:   secret.Allowlist,
+		CreatedAt:   secret.CreatedAt,
 	})
 }
 
