@@ -6,13 +6,9 @@ listener "tcp" {
   tls_disable   = true
 }
 
-storage "consul" {
-  address = "127.0.0.1:8500"
-  path    = "vault/"
-
-  %{ if consul_acl_token != "" }
-  token   = "${consul_acl_token}"
-  %{ endif }
+storage "gcs" {
+  bucket     = "${gcs_bucket_name}"
+  ha_enabled = "true"
 }
 
 seal "gcpckms" {

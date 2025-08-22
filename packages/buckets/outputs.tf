@@ -34,3 +34,8 @@ output "fc_build_cache_bucket_name" {
 output "clickhouse_backups_bucket_name" {
   value = google_storage_bucket.clickhouse_backups_bucket.name
 }
+
+output "vault_backend_bucket_name" {
+  description = "The name of the GCS bucket for Vault backend storage"
+  value       = google_storage_bucket.vault_backend.name
+}

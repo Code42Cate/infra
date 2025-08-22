@@ -700,6 +700,7 @@ locals {
     gcp_region         = var.gcp_region
     kms_keyring        = var.vault_kms_keyring
     kms_crypto_key     = var.vault_kms_crypto_key
+    gcs_bucket_name    = var.vault_backend_bucket_name
   })
 }
 

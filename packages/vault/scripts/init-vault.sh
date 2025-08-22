@@ -42,7 +42,12 @@ function log_error {
 }
 
 function check_vault_status {
-  vault status -format=json 2>/dev/null || echo '{"initialized":false,"sealed":true}'
+  local status_output
+  if status_output=$(vault status -format=json 2>/dev/null); then
+    echo "$status_output"
+  else
+    echo '{"initialized":false,"sealed":true}'
+  fi
 }
 
 function save_to_secret_manager {
