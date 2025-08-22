@@ -110,7 +110,7 @@ func (a *APIStore) DeleteSecretsSecretID(c *gin.Context, secretID string) {
 		return
 	}
 
-	if err := team.DeleteSecret(ctx, a.db, a.secretVault, secretIDParsed, teamID); err != nil {
+	if err := team.DeleteSecret(ctx, a.db, a.secretVault, teamID, secretIDParsed); err != nil {
 		if models.IsNotFound(err) {
 			c.String(http.StatusNotFound, "id not found")
 			return
