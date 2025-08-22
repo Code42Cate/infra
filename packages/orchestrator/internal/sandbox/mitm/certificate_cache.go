@@ -63,6 +63,7 @@ func (c *CertificateCache) GetCertificate(
 
 	// TODO: Cert expiry things
 	// no cert found, create new one and save it
+	// TODO: probably use the same error type
 	if errors.Is(certErr, vault.ErrSecretNotFound) || errors.Is(certErr, vault.ErrSecretValueNotFound) ||
 		errors.Is(keyErr, vault.ErrSecretNotFound) || errors.Is(keyErr, vault.ErrSecretValueNotFound) {
 		newCert, newPriv, err := GenerateRootCert(certLifetimeDays, "e2b.dev")
