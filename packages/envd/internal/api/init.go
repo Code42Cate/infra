@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"crypto/x509"
@@ -103,8 +104,11 @@ func installCertificate(certificate string, logger zerolog.Logger) error {
 	pemLink := filepath.Join(certsDir, "e2b.pem")
 	bundleFile := filepath.Join(certsDir, "ca-certificates.crt")
 
+	// Wrap certificate with comment markers
+	wrappedCert := []byte("#E2B_CERT_START\n" + certificate + "\n#E2B_CERT_END")
+
 	// Write the certificate file
-	if err := os.WriteFile(sourceCert, certData, 0o644); err != nil {
+	if err := os.WriteFile(sourceCert, wrappedCert, 0o644); err != nil {
 		return fmt.Errorf("failed to write certificate file: %w", err)
 	}
 
@@ -114,21 +118,34 @@ func installCertificate(certificate string, logger zerolog.Logger) error {
 		return fmt.Errorf("failed to create PEM symlink: %w", err)
 	}
 
-	// 2. Append to the certificate bundle
-	// Ensure trailing newline
-	bundleData := certData
-	if len(bundleData) > 0 && bundleData[len(bundleData)-1] != '\n' {
-		bundleData = append(bundleData, '\n')
+	// 2. Append to the certificate bundle if not already present
+	// Check if the certificate already exists in the bundle
+	existingBundle, err := os.ReadFile(bundleFile)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to read bundle file: %w", err)
 	}
 
-	f, err := os.OpenFile(bundleFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o644)
-	if err != nil {
-		return fmt.Errorf("failed to open bundle file: %w", err)
-	}
-	defer f.Close()
+	// Check if the wrapped certificate is already in the bundle
+	if !bytes.Contains(existingBundle, wrappedCert) {
+		// Use wrapped certificate for bundle
+		bundleData := wrappedCert
+		// Ensure trailing newline
+		if len(bundleData) > 0 && bundleData[len(bundleData)-1] != '\n' {
+			bundleData = append(bundleData, '\n')
+		}
 
-	if _, err := f.Write(bundleData); err != nil {
-		return fmt.Errorf("failed to write to bundle: %w", err)
+		f, err := os.OpenFile(bundleFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o644)
+		if err != nil {
+			return fmt.Errorf("failed to open bundle file: %w", err)
+		}
+		defer f.Close()
+
+		if _, err := f.Write(bundleData); err != nil {
+			return fmt.Errorf("failed to write to bundle: %w", err)
+		}
+		logger.Debug().Msg("Certificate appended to bundle")
+	} else {
+		logger.Debug().Msg("Certificate already exists in bundle, skipping append")
 	}
 
 	// 3. Create hash symlink for OpenSSL to make faster lookups
