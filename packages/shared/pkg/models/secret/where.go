@@ -73,14 +73,14 @@ func TeamID(v uuid.UUID) predicate.Secret {
 	return predicate.Secret(sql.FieldEQ(FieldTeamID, v))
 }
 
-// Name applies equality check predicate on the "name" field. It's identical to NameEQ.
-func Name(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldEQ(FieldName, v))
+// Description applies equality check predicate on the "description" field. It's identical to DescriptionEQ.
+func Description(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldDescription, v))
 }
 
-// Hosts applies equality check predicate on the "hosts" field. It's identical to HostsEQ.
-func Hosts(v pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldEQ(FieldHosts, v))
+// Allowlist applies equality check predicate on the "allowlist" field. It's identical to AllowlistEQ.
+func Allowlist(v pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldAllowlist, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -193,109 +193,174 @@ func TeamIDNotIn(vs ...uuid.UUID) predicate.Secret {
 	return predicate.Secret(sql.FieldNotIn(FieldTeamID, vs...))
 }
 
-// NameEQ applies the EQ predicate on the "name" field.
-func NameEQ(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldEQ(FieldName, v))
+// LabelEQ applies the EQ predicate on the "label" field.
+func LabelEQ(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldLabel, v))
 }
 
-// NameNEQ applies the NEQ predicate on the "name" field.
-func NameNEQ(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldNEQ(FieldName, v))
+// LabelNEQ applies the NEQ predicate on the "label" field.
+func LabelNEQ(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldNEQ(FieldLabel, v))
 }
 
-// NameIn applies the In predicate on the "name" field.
-func NameIn(vs ...string) predicate.Secret {
-	return predicate.Secret(sql.FieldIn(FieldName, vs...))
+// LabelIn applies the In predicate on the "label" field.
+func LabelIn(vs ...string) predicate.Secret {
+	return predicate.Secret(sql.FieldIn(FieldLabel, vs...))
 }
 
-// NameNotIn applies the NotIn predicate on the "name" field.
-func NameNotIn(vs ...string) predicate.Secret {
-	return predicate.Secret(sql.FieldNotIn(FieldName, vs...))
+// LabelNotIn applies the NotIn predicate on the "label" field.
+func LabelNotIn(vs ...string) predicate.Secret {
+	return predicate.Secret(sql.FieldNotIn(FieldLabel, vs...))
 }
 
-// NameGT applies the GT predicate on the "name" field.
-func NameGT(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldGT(FieldName, v))
+// LabelGT applies the GT predicate on the "label" field.
+func LabelGT(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldGT(FieldLabel, v))
 }
 
-// NameGTE applies the GTE predicate on the "name" field.
-func NameGTE(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldGTE(FieldName, v))
+// LabelGTE applies the GTE predicate on the "label" field.
+func LabelGTE(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldGTE(FieldLabel, v))
 }
 
-// NameLT applies the LT predicate on the "name" field.
-func NameLT(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldLT(FieldName, v))
+// LabelLT applies the LT predicate on the "label" field.
+func LabelLT(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldLT(FieldLabel, v))
 }
 
-// NameLTE applies the LTE predicate on the "name" field.
-func NameLTE(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldLTE(FieldName, v))
+// LabelLTE applies the LTE predicate on the "label" field.
+func LabelLTE(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldLTE(FieldLabel, v))
 }
 
-// NameContains applies the Contains predicate on the "name" field.
-func NameContains(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldContains(FieldName, v))
+// LabelContains applies the Contains predicate on the "label" field.
+func LabelContains(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldContains(FieldLabel, v))
 }
 
-// NameHasPrefix applies the HasPrefix predicate on the "name" field.
-func NameHasPrefix(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldHasPrefix(FieldName, v))
+// LabelHasPrefix applies the HasPrefix predicate on the "label" field.
+func LabelHasPrefix(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldHasPrefix(FieldLabel, v))
 }
 
-// NameHasSuffix applies the HasSuffix predicate on the "name" field.
-func NameHasSuffix(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldHasSuffix(FieldName, v))
+// LabelHasSuffix applies the HasSuffix predicate on the "label" field.
+func LabelHasSuffix(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldHasSuffix(FieldLabel, v))
 }
 
-// NameEqualFold applies the EqualFold predicate on the "name" field.
-func NameEqualFold(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldEqualFold(FieldName, v))
+// LabelEqualFold applies the EqualFold predicate on the "label" field.
+func LabelEqualFold(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldEqualFold(FieldLabel, v))
 }
 
-// NameContainsFold applies the ContainsFold predicate on the "name" field.
-func NameContainsFold(v string) predicate.Secret {
-	return predicate.Secret(sql.FieldContainsFold(FieldName, v))
+// LabelContainsFold applies the ContainsFold predicate on the "label" field.
+func LabelContainsFold(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldContainsFold(FieldLabel, v))
 }
 
-// HostsEQ applies the EQ predicate on the "hosts" field.
-func HostsEQ(v pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldEQ(FieldHosts, v))
+// DescriptionEQ applies the EQ predicate on the "description" field.
+func DescriptionEQ(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldDescription, v))
 }
 
-// HostsNEQ applies the NEQ predicate on the "hosts" field.
-func HostsNEQ(v pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldNEQ(FieldHosts, v))
+// DescriptionNEQ applies the NEQ predicate on the "description" field.
+func DescriptionNEQ(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldNEQ(FieldDescription, v))
 }
 
-// HostsIn applies the In predicate on the "hosts" field.
-func HostsIn(vs ...pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldIn(FieldHosts, vs...))
+// DescriptionIn applies the In predicate on the "description" field.
+func DescriptionIn(vs ...string) predicate.Secret {
+	return predicate.Secret(sql.FieldIn(FieldDescription, vs...))
 }
 
-// HostsNotIn applies the NotIn predicate on the "hosts" field.
-func HostsNotIn(vs ...pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldNotIn(FieldHosts, vs...))
+// DescriptionNotIn applies the NotIn predicate on the "description" field.
+func DescriptionNotIn(vs ...string) predicate.Secret {
+	return predicate.Secret(sql.FieldNotIn(FieldDescription, vs...))
 }
 
-// HostsGT applies the GT predicate on the "hosts" field.
-func HostsGT(v pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldGT(FieldHosts, v))
+// DescriptionGT applies the GT predicate on the "description" field.
+func DescriptionGT(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldGT(FieldDescription, v))
 }
 
-// HostsGTE applies the GTE predicate on the "hosts" field.
-func HostsGTE(v pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldGTE(FieldHosts, v))
+// DescriptionGTE applies the GTE predicate on the "description" field.
+func DescriptionGTE(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldGTE(FieldDescription, v))
 }
 
-// HostsLT applies the LT predicate on the "hosts" field.
-func HostsLT(v pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldLT(FieldHosts, v))
+// DescriptionLT applies the LT predicate on the "description" field.
+func DescriptionLT(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldLT(FieldDescription, v))
 }
 
-// HostsLTE applies the LTE predicate on the "hosts" field.
-func HostsLTE(v pq.StringArray) predicate.Secret {
-	return predicate.Secret(sql.FieldLTE(FieldHosts, v))
+// DescriptionLTE applies the LTE predicate on the "description" field.
+func DescriptionLTE(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldLTE(FieldDescription, v))
+}
+
+// DescriptionContains applies the Contains predicate on the "description" field.
+func DescriptionContains(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldContains(FieldDescription, v))
+}
+
+// DescriptionHasPrefix applies the HasPrefix predicate on the "description" field.
+func DescriptionHasPrefix(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldHasPrefix(FieldDescription, v))
+}
+
+// DescriptionHasSuffix applies the HasSuffix predicate on the "description" field.
+func DescriptionHasSuffix(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldHasSuffix(FieldDescription, v))
+}
+
+// DescriptionEqualFold applies the EqualFold predicate on the "description" field.
+func DescriptionEqualFold(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldEqualFold(FieldDescription, v))
+}
+
+// DescriptionContainsFold applies the ContainsFold predicate on the "description" field.
+func DescriptionContainsFold(v string) predicate.Secret {
+	return predicate.Secret(sql.FieldContainsFold(FieldDescription, v))
+}
+
+// AllowlistEQ applies the EQ predicate on the "allowlist" field.
+func AllowlistEQ(v pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldAllowlist, v))
+}
+
+// AllowlistNEQ applies the NEQ predicate on the "allowlist" field.
+func AllowlistNEQ(v pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldNEQ(FieldAllowlist, v))
+}
+
+// AllowlistIn applies the In predicate on the "allowlist" field.
+func AllowlistIn(vs ...pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldIn(FieldAllowlist, vs...))
+}
+
+// AllowlistNotIn applies the NotIn predicate on the "allowlist" field.
+func AllowlistNotIn(vs ...pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldNotIn(FieldAllowlist, vs...))
+}
+
+// AllowlistGT applies the GT predicate on the "allowlist" field.
+func AllowlistGT(v pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldGT(FieldAllowlist, v))
+}
+
+// AllowlistGTE applies the GTE predicate on the "allowlist" field.
+func AllowlistGTE(v pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldGTE(FieldAllowlist, v))
+}
+
+// AllowlistLT applies the LT predicate on the "allowlist" field.
+func AllowlistLT(v pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldLT(FieldAllowlist, v))
+}
+
+// AllowlistLTE applies the LTE predicate on the "allowlist" field.
+func AllowlistLTE(v pq.StringArray) predicate.Secret {
+	return predicate.Secret(sql.FieldLTE(FieldAllowlist, v))
 }
 
 // HasTeam applies the HasEdge predicate on the "team" edge.

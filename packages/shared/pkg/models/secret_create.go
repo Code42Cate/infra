@@ -60,23 +60,29 @@ func (sc *SecretCreate) SetTeamID(u uuid.UUID) *SecretCreate {
 	return sc
 }
 
-// SetName sets the "name" field.
-func (sc *SecretCreate) SetName(s string) *SecretCreate {
-	sc.mutation.SetName(s)
+// SetLabel sets the "label" field.
+func (sc *SecretCreate) SetLabel(s string) *SecretCreate {
+	sc.mutation.SetLabel(s)
 	return sc
 }
 
-// SetNillableName sets the "name" field if the given value is not nil.
-func (sc *SecretCreate) SetNillableName(s *string) *SecretCreate {
+// SetDescription sets the "description" field.
+func (sc *SecretCreate) SetDescription(s string) *SecretCreate {
+	sc.mutation.SetDescription(s)
+	return sc
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (sc *SecretCreate) SetNillableDescription(s *string) *SecretCreate {
 	if s != nil {
-		sc.SetName(*s)
+		sc.SetDescription(*s)
 	}
 	return sc
 }
 
-// SetHosts sets the "hosts" field.
-func (sc *SecretCreate) SetHosts(pa pq.StringArray) *SecretCreate {
-	sc.mutation.SetHosts(pa)
+// SetAllowlist sets the "allowlist" field.
+func (sc *SecretCreate) SetAllowlist(pa pq.StringArray) *SecretCreate {
+	sc.mutation.SetAllowlist(pa)
 	return sc
 }
 
@@ -130,9 +136,9 @@ func (sc *SecretCreate) defaults() {
 		v := secret.DefaultCreatedAt()
 		sc.mutation.SetCreatedAt(v)
 	}
-	if _, ok := sc.mutation.Name(); !ok {
-		v := secret.DefaultName
-		sc.mutation.SetName(v)
+	if _, ok := sc.mutation.Description(); !ok {
+		v := secret.DefaultDescription
+		sc.mutation.SetDescription(v)
 	}
 }
 
@@ -144,11 +150,14 @@ func (sc *SecretCreate) check() error {
 	if _, ok := sc.mutation.TeamID(); !ok {
 		return &ValidationError{Name: "team_id", err: errors.New(`models: missing required field "Secret.team_id"`)}
 	}
-	if _, ok := sc.mutation.Name(); !ok {
-		return &ValidationError{Name: "name", err: errors.New(`models: missing required field "Secret.name"`)}
+	if _, ok := sc.mutation.Label(); !ok {
+		return &ValidationError{Name: "label", err: errors.New(`models: missing required field "Secret.label"`)}
 	}
-	if _, ok := sc.mutation.Hosts(); !ok {
-		return &ValidationError{Name: "hosts", err: errors.New(`models: missing required field "Secret.hosts"`)}
+	if _, ok := sc.mutation.Description(); !ok {
+		return &ValidationError{Name: "description", err: errors.New(`models: missing required field "Secret.description"`)}
+	}
+	if _, ok := sc.mutation.Allowlist(); !ok {
+		return &ValidationError{Name: "allowlist", err: errors.New(`models: missing required field "Secret.allowlist"`)}
 	}
 	if _, ok := sc.mutation.TeamID(); !ok {
 		return &ValidationError{Name: "team", err: errors.New(`models: missing required edge "Secret.team"`)}
@@ -198,13 +207,17 @@ func (sc *SecretCreate) createSpec() (*Secret, *sqlgraph.CreateSpec) {
 		_spec.SetField(secret.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = &value
 	}
-	if value, ok := sc.mutation.Name(); ok {
-		_spec.SetField(secret.FieldName, field.TypeString, value)
-		_node.Name = value
+	if value, ok := sc.mutation.Label(); ok {
+		_spec.SetField(secret.FieldLabel, field.TypeString, value)
+		_node.Label = value
 	}
-	if value, ok := sc.mutation.Hosts(); ok {
-		_spec.SetField(secret.FieldHosts, field.TypeOther, value)
-		_node.Hosts = value
+	if value, ok := sc.mutation.Description(); ok {
+		_spec.SetField(secret.FieldDescription, field.TypeString, value)
+		_node.Description = value
+	}
+	if value, ok := sc.mutation.Allowlist(); ok {
+		_spec.SetField(secret.FieldAllowlist, field.TypeOther, value)
+		_node.Allowlist = value
 	}
 	if nodes := sc.mutation.TeamIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -306,27 +319,39 @@ func (u *SecretUpsert) UpdateTeamID() *SecretUpsert {
 	return u
 }
 
-// SetName sets the "name" field.
-func (u *SecretUpsert) SetName(v string) *SecretUpsert {
-	u.Set(secret.FieldName, v)
+// SetLabel sets the "label" field.
+func (u *SecretUpsert) SetLabel(v string) *SecretUpsert {
+	u.Set(secret.FieldLabel, v)
 	return u
 }
 
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *SecretUpsert) UpdateName() *SecretUpsert {
-	u.SetExcluded(secret.FieldName)
+// UpdateLabel sets the "label" field to the value that was provided on create.
+func (u *SecretUpsert) UpdateLabel() *SecretUpsert {
+	u.SetExcluded(secret.FieldLabel)
 	return u
 }
 
-// SetHosts sets the "hosts" field.
-func (u *SecretUpsert) SetHosts(v pq.StringArray) *SecretUpsert {
-	u.Set(secret.FieldHosts, v)
+// SetDescription sets the "description" field.
+func (u *SecretUpsert) SetDescription(v string) *SecretUpsert {
+	u.Set(secret.FieldDescription, v)
 	return u
 }
 
-// UpdateHosts sets the "hosts" field to the value that was provided on create.
-func (u *SecretUpsert) UpdateHosts() *SecretUpsert {
-	u.SetExcluded(secret.FieldHosts)
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *SecretUpsert) UpdateDescription() *SecretUpsert {
+	u.SetExcluded(secret.FieldDescription)
+	return u
+}
+
+// SetAllowlist sets the "allowlist" field.
+func (u *SecretUpsert) SetAllowlist(v pq.StringArray) *SecretUpsert {
+	u.Set(secret.FieldAllowlist, v)
+	return u
+}
+
+// UpdateAllowlist sets the "allowlist" field to the value that was provided on create.
+func (u *SecretUpsert) UpdateAllowlist() *SecretUpsert {
+	u.SetExcluded(secret.FieldAllowlist)
 	return u
 }
 
@@ -416,31 +441,45 @@ func (u *SecretUpsertOne) UpdateTeamID() *SecretUpsertOne {
 	})
 }
 
-// SetName sets the "name" field.
-func (u *SecretUpsertOne) SetName(v string) *SecretUpsertOne {
+// SetLabel sets the "label" field.
+func (u *SecretUpsertOne) SetLabel(v string) *SecretUpsertOne {
 	return u.Update(func(s *SecretUpsert) {
-		s.SetName(v)
+		s.SetLabel(v)
 	})
 }
 
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *SecretUpsertOne) UpdateName() *SecretUpsertOne {
+// UpdateLabel sets the "label" field to the value that was provided on create.
+func (u *SecretUpsertOne) UpdateLabel() *SecretUpsertOne {
 	return u.Update(func(s *SecretUpsert) {
-		s.UpdateName()
+		s.UpdateLabel()
 	})
 }
 
-// SetHosts sets the "hosts" field.
-func (u *SecretUpsertOne) SetHosts(v pq.StringArray) *SecretUpsertOne {
+// SetDescription sets the "description" field.
+func (u *SecretUpsertOne) SetDescription(v string) *SecretUpsertOne {
 	return u.Update(func(s *SecretUpsert) {
-		s.SetHosts(v)
+		s.SetDescription(v)
 	})
 }
 
-// UpdateHosts sets the "hosts" field to the value that was provided on create.
-func (u *SecretUpsertOne) UpdateHosts() *SecretUpsertOne {
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *SecretUpsertOne) UpdateDescription() *SecretUpsertOne {
 	return u.Update(func(s *SecretUpsert) {
-		s.UpdateHosts()
+		s.UpdateDescription()
+	})
+}
+
+// SetAllowlist sets the "allowlist" field.
+func (u *SecretUpsertOne) SetAllowlist(v pq.StringArray) *SecretUpsertOne {
+	return u.Update(func(s *SecretUpsert) {
+		s.SetAllowlist(v)
+	})
+}
+
+// UpdateAllowlist sets the "allowlist" field to the value that was provided on create.
+func (u *SecretUpsertOne) UpdateAllowlist() *SecretUpsertOne {
+	return u.Update(func(s *SecretUpsert) {
+		s.UpdateAllowlist()
 	})
 }
 
@@ -697,31 +736,45 @@ func (u *SecretUpsertBulk) UpdateTeamID() *SecretUpsertBulk {
 	})
 }
 
-// SetName sets the "name" field.
-func (u *SecretUpsertBulk) SetName(v string) *SecretUpsertBulk {
+// SetLabel sets the "label" field.
+func (u *SecretUpsertBulk) SetLabel(v string) *SecretUpsertBulk {
 	return u.Update(func(s *SecretUpsert) {
-		s.SetName(v)
+		s.SetLabel(v)
 	})
 }
 
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *SecretUpsertBulk) UpdateName() *SecretUpsertBulk {
+// UpdateLabel sets the "label" field to the value that was provided on create.
+func (u *SecretUpsertBulk) UpdateLabel() *SecretUpsertBulk {
 	return u.Update(func(s *SecretUpsert) {
-		s.UpdateName()
+		s.UpdateLabel()
 	})
 }
 
-// SetHosts sets the "hosts" field.
-func (u *SecretUpsertBulk) SetHosts(v pq.StringArray) *SecretUpsertBulk {
+// SetDescription sets the "description" field.
+func (u *SecretUpsertBulk) SetDescription(v string) *SecretUpsertBulk {
 	return u.Update(func(s *SecretUpsert) {
-		s.SetHosts(v)
+		s.SetDescription(v)
 	})
 }
 
-// UpdateHosts sets the "hosts" field to the value that was provided on create.
-func (u *SecretUpsertBulk) UpdateHosts() *SecretUpsertBulk {
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *SecretUpsertBulk) UpdateDescription() *SecretUpsertBulk {
 	return u.Update(func(s *SecretUpsert) {
-		s.UpdateHosts()
+		s.UpdateDescription()
+	})
+}
+
+// SetAllowlist sets the "allowlist" field.
+func (u *SecretUpsertBulk) SetAllowlist(v pq.StringArray) *SecretUpsertBulk {
+	return u.Update(func(s *SecretUpsert) {
+		s.SetAllowlist(v)
+	})
+}
+
+// UpdateAllowlist sets the "allowlist" field to the value that was provided on create.
+func (u *SecretUpsertBulk) UpdateAllowlist() *SecretUpsertBulk {
+	return u.Update(func(s *SecretUpsert) {
+		s.UpdateAllowlist()
 	})
 }
 

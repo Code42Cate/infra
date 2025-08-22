@@ -64,7 +64,7 @@ func configureProxy(proxy *goproxy.ProxyHttpServer, caCert tls.Certificate, secr
 				zap.Duration("duration", time.Since(start)),
 			)
 
-			hosts, err := extractHostsFromMetadata(metadata)
+			hosts, err := extractAllowlistFromMetadata(metadata)
 			if err != nil {
 				return "", err
 			}
@@ -110,7 +110,7 @@ func connectDial(ctx context.Context, proxy *goproxy.ProxyHttpServer, network, a
 	return proxy.ConnectDial(network, addr)
 }
 
-func extractHostsFromMetadata(metadata map[string]interface{}) ([]string, error) {
+func extractAllowlistFromMetadata(metadata map[string]interface{}) ([]string, error) {
 	// Extract custom_metadata first
 	customMetadata, ok := metadata["custom_metadata"].(map[string]interface{})
 	if !ok {
@@ -118,7 +118,7 @@ func extractHostsFromMetadata(metadata map[string]interface{}) ([]string, error)
 	}
 
 	// Extract hosts JSON string from custom_metadata
-	hostsJSON, ok := customMetadata["hosts"].(string)
+	hostsJSON, ok := customMetadata["allowlist"].(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid metadata, missing or invalid hosts in custom_metadata")
 	}

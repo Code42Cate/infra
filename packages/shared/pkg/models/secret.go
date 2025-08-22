@@ -26,10 +26,12 @@ type Secret struct {
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 	// TeamID holds the value of the "team_id" field.
 	TeamID uuid.UUID `json:"team_id,omitempty"`
-	// Name holds the value of the "name" field.
-	Name string `json:"name,omitempty"`
-	// Hosts holds the value of the "hosts" field.
-	Hosts pq.StringArray `json:"hosts,omitempty"`
+	// Label holds the value of the "label" field.
+	Label string `json:"label,omitempty"`
+	// Description holds the value of the "description" field.
+	Description string `json:"description,omitempty"`
+	// Allowlist holds the value of the "allowlist" field.
+	Allowlist pq.StringArray `json:"allowlist,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SecretQuery when eager-loading is set.
 	Edges        SecretEdges `json:"edges"`
@@ -63,9 +65,9 @@ func (*Secret) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case secret.FieldHosts:
+		case secret.FieldAllowlist:
 			values[i] = new(pq.StringArray)
-		case secret.FieldName:
+		case secret.FieldLabel, secret.FieldDescription:
 			values[i] = new(sql.NullString)
 		case secret.FieldCreatedAt, secret.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -111,17 +113,23 @@ func (s *Secret) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				s.TeamID = *value
 			}
-		case secret.FieldName:
+		case secret.FieldLabel:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field name", values[i])
+				return fmt.Errorf("unexpected type %T for field label", values[i])
 			} else if value.Valid {
-				s.Name = value.String
+				s.Label = value.String
 			}
-		case secret.FieldHosts:
+		case secret.FieldDescription:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field description", values[i])
+			} else if value.Valid {
+				s.Description = value.String
+			}
+		case secret.FieldAllowlist:
 			if value, ok := values[i].(*pq.StringArray); !ok {
-				return fmt.Errorf("unexpected type %T for field hosts", values[i])
+				return fmt.Errorf("unexpected type %T for field allowlist", values[i])
 			} else if value != nil {
-				s.Hosts = *value
+				s.Allowlist = *value
 			}
 		default:
 			s.selectValues.Set(columns[i], values[i])
@@ -175,11 +183,14 @@ func (s *Secret) String() string {
 	builder.WriteString("team_id=")
 	builder.WriteString(fmt.Sprintf("%v", s.TeamID))
 	builder.WriteString(", ")
-	builder.WriteString("name=")
-	builder.WriteString(s.Name)
+	builder.WriteString("label=")
+	builder.WriteString(s.Label)
 	builder.WriteString(", ")
-	builder.WriteString("hosts=")
-	builder.WriteString(fmt.Sprintf("%v", s.Hosts))
+	builder.WriteString("description=")
+	builder.WriteString(s.Description)
+	builder.WriteString(", ")
+	builder.WriteString("allowlist=")
+	builder.WriteString(fmt.Sprintf("%v", s.Allowlist))
 	builder.WriteByte(')')
 	return builder.String()
 }

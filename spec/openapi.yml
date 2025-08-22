@@ -1019,22 +1019,25 @@ components:
     Secret:
       required:
         - id
-        - name
-        - hosts
+        - label
+        - allowlist
         - createdAt
       properties:
         id:
           type: string
           format: uuid
           description: Identifier of the secret
-        name:
+        label:
           type: string
-          description: Name of the secret
-        hosts:
+          description: Label of the secret
+        description:
+          type: string
+          description: Description of the secret
+        allowlist:
           type: array
           items:
             type: string
-          description: List of hosts where this secret can be used
+          description: List of allowlist where this secret can be used
         createdAt:
           type: string
           format: date-time
@@ -1044,8 +1047,9 @@ components:
       required:
         - id
         - value
-        - name
-        - hosts
+        - label
+        - allowlist
+        - description
         - createdAt
       properties:
         id:
@@ -1055,14 +1059,17 @@ components:
         value:
           type: string
           description: Raw value of the secret (only shown on creation)
-        name:
+        label:
           type: string
-          description: Name of the secret
-        hosts:
+          description: Label of the secret
+        description:
+          type: string
+          description: Description of the secret
+        allowlist:
           type: array
           items:
             type: string
-          description: List of hosts where this secret can be used
+          description: List of allowlist where this secret can be used
         createdAt:
           type: string
           format: date-time
@@ -1070,22 +1077,25 @@ components:
 
     NewSecret:
       required:
-        - name
+        - label
         - value
-        - hosts
+        - allowlist
+        - description
       properties:
-        name:
+        label:
           type: string
-          description: Name of the secret
+          description: Label of the secret
         value:
           type: string
           description: Value of the secret
-        hosts:
+        allowlist:
           type: array
           items:
             type: string
-          description: List of hosts where this secret can be used
-
+          description: List of allowlist where this secret can be used
+        description:
+          type: string
+          description: Description of the secret
     Error:
       required:
         - code

@@ -87,10 +87,10 @@ func init() {
 	secretDescCreatedAt := secretFields[1].Descriptor()
 	// secret.DefaultCreatedAt holds the default value on creation for the created_at field.
 	secret.DefaultCreatedAt = secretDescCreatedAt.Default.(func() time.Time)
-	// secretDescName is the schema descriptor for name field.
-	secretDescName := secretFields[4].Descriptor()
-	// secret.DefaultName holds the default value on creation for the name field.
-	secret.DefaultName = secretDescName.Default.(string)
+	// secretDescDescription is the schema descriptor for description field.
+	secretDescDescription := secretFields[5].Descriptor()
+	// secret.DefaultDescription holds the default value on creation for the description field.
+	secret.DefaultDescription = secretDescDescription.Default.(string)
 	snapshotFields := schema.Snapshot{}.Fields()
 	_ = snapshotFields
 	// snapshotDescCreatedAt is the schema descriptor for created_at field.

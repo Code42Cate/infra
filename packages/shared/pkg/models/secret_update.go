@@ -67,23 +67,37 @@ func (su *SecretUpdate) SetNillableTeamID(u *uuid.UUID) *SecretUpdate {
 	return su
 }
 
-// SetName sets the "name" field.
-func (su *SecretUpdate) SetName(s string) *SecretUpdate {
-	su.mutation.SetName(s)
+// SetLabel sets the "label" field.
+func (su *SecretUpdate) SetLabel(s string) *SecretUpdate {
+	su.mutation.SetLabel(s)
 	return su
 }
 
-// SetNillableName sets the "name" field if the given value is not nil.
-func (su *SecretUpdate) SetNillableName(s *string) *SecretUpdate {
+// SetNillableLabel sets the "label" field if the given value is not nil.
+func (su *SecretUpdate) SetNillableLabel(s *string) *SecretUpdate {
 	if s != nil {
-		su.SetName(*s)
+		su.SetLabel(*s)
 	}
 	return su
 }
 
-// SetHosts sets the "hosts" field.
-func (su *SecretUpdate) SetHosts(pa pq.StringArray) *SecretUpdate {
-	su.mutation.SetHosts(pa)
+// SetDescription sets the "description" field.
+func (su *SecretUpdate) SetDescription(s string) *SecretUpdate {
+	su.mutation.SetDescription(s)
+	return su
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (su *SecretUpdate) SetNillableDescription(s *string) *SecretUpdate {
+	if s != nil {
+		su.SetDescription(*s)
+	}
+	return su
+}
+
+// SetAllowlist sets the "allowlist" field.
+func (su *SecretUpdate) SetAllowlist(pa pq.StringArray) *SecretUpdate {
+	su.mutation.SetAllowlist(pa)
 	return su
 }
 
@@ -162,11 +176,14 @@ func (su *SecretUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if su.mutation.UpdatedAtCleared() {
 		_spec.ClearField(secret.FieldUpdatedAt, field.TypeTime)
 	}
-	if value, ok := su.mutation.Name(); ok {
-		_spec.SetField(secret.FieldName, field.TypeString, value)
+	if value, ok := su.mutation.Label(); ok {
+		_spec.SetField(secret.FieldLabel, field.TypeString, value)
 	}
-	if value, ok := su.mutation.Hosts(); ok {
-		_spec.SetField(secret.FieldHosts, field.TypeOther, value)
+	if value, ok := su.mutation.Description(); ok {
+		_spec.SetField(secret.FieldDescription, field.TypeString, value)
+	}
+	if value, ok := su.mutation.Allowlist(); ok {
+		_spec.SetField(secret.FieldAllowlist, field.TypeOther, value)
 	}
 	if su.mutation.TeamCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -257,23 +274,37 @@ func (suo *SecretUpdateOne) SetNillableTeamID(u *uuid.UUID) *SecretUpdateOne {
 	return suo
 }
 
-// SetName sets the "name" field.
-func (suo *SecretUpdateOne) SetName(s string) *SecretUpdateOne {
-	suo.mutation.SetName(s)
+// SetLabel sets the "label" field.
+func (suo *SecretUpdateOne) SetLabel(s string) *SecretUpdateOne {
+	suo.mutation.SetLabel(s)
 	return suo
 }
 
-// SetNillableName sets the "name" field if the given value is not nil.
-func (suo *SecretUpdateOne) SetNillableName(s *string) *SecretUpdateOne {
+// SetNillableLabel sets the "label" field if the given value is not nil.
+func (suo *SecretUpdateOne) SetNillableLabel(s *string) *SecretUpdateOne {
 	if s != nil {
-		suo.SetName(*s)
+		suo.SetLabel(*s)
 	}
 	return suo
 }
 
-// SetHosts sets the "hosts" field.
-func (suo *SecretUpdateOne) SetHosts(pa pq.StringArray) *SecretUpdateOne {
-	suo.mutation.SetHosts(pa)
+// SetDescription sets the "description" field.
+func (suo *SecretUpdateOne) SetDescription(s string) *SecretUpdateOne {
+	suo.mutation.SetDescription(s)
+	return suo
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (suo *SecretUpdateOne) SetNillableDescription(s *string) *SecretUpdateOne {
+	if s != nil {
+		suo.SetDescription(*s)
+	}
+	return suo
+}
+
+// SetAllowlist sets the "allowlist" field.
+func (suo *SecretUpdateOne) SetAllowlist(pa pq.StringArray) *SecretUpdateOne {
+	suo.mutation.SetAllowlist(pa)
 	return suo
 }
 
@@ -382,11 +413,14 @@ func (suo *SecretUpdateOne) sqlSave(ctx context.Context) (_node *Secret, err err
 	if suo.mutation.UpdatedAtCleared() {
 		_spec.ClearField(secret.FieldUpdatedAt, field.TypeTime)
 	}
-	if value, ok := suo.mutation.Name(); ok {
-		_spec.SetField(secret.FieldName, field.TypeString, value)
+	if value, ok := suo.mutation.Label(); ok {
+		_spec.SetField(secret.FieldLabel, field.TypeString, value)
 	}
-	if value, ok := suo.mutation.Hosts(); ok {
-		_spec.SetField(secret.FieldHosts, field.TypeOther, value)
+	if value, ok := suo.mutation.Description(); ok {
+		_spec.SetField(secret.FieldDescription, field.TypeString, value)
+	}
+	if value, ok := suo.mutation.Allowlist(); ok {
+		_spec.SetField(secret.FieldAllowlist, field.TypeOther, value)
 	}
 	if suo.mutation.TeamCleared() {
 		edge := &sqlgraph.EdgeSpec{

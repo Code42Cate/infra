@@ -26,8 +26,9 @@ func (Secret) Fields() []ent.Field {
 		),
 		field.Time("updated_at").Nillable().Optional(),
 		field.UUID("team_id", uuid.UUID{}),
-		field.String("name").SchemaType(map[string]string{dialect.Postgres: "text"}).Default("Unnamed Secret"),
-		field.Other("hosts", pq.StringArray{}).SchemaType(map[string]string{dialect.Postgres: "text[]"}),
+		field.String("label").SchemaType(map[string]string{dialect.Postgres: "text"}),
+		field.String("description").SchemaType(map[string]string{dialect.Postgres: "text"}).Default(""),
+		field.Other("allowlist", pq.StringArray{}).SchemaType(map[string]string{dialect.Postgres: "text[]"}),
 	}
 }
 

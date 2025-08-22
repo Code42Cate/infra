@@ -20,10 +20,12 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldTeamID holds the string denoting the team_id field in the database.
 	FieldTeamID = "team_id"
-	// FieldName holds the string denoting the name field in the database.
-	FieldName = "name"
-	// FieldHosts holds the string denoting the hosts field in the database.
-	FieldHosts = "hosts"
+	// FieldLabel holds the string denoting the label field in the database.
+	FieldLabel = "label"
+	// FieldDescription holds the string denoting the description field in the database.
+	FieldDescription = "description"
+	// FieldAllowlist holds the string denoting the allowlist field in the database.
+	FieldAllowlist = "allowlist"
 	// EdgeTeam holds the string denoting the team edge name in mutations.
 	EdgeTeam = "team"
 	// Table holds the table name of the secret in the database.
@@ -43,8 +45,9 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldTeamID,
-	FieldName,
-	FieldHosts,
+	FieldLabel,
+	FieldDescription,
+	FieldAllowlist,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -60,8 +63,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
-	// DefaultName holds the default value on creation for the "name" field.
-	DefaultName string
+	// DefaultDescription holds the default value on creation for the "description" field.
+	DefaultDescription string
 )
 
 // OrderOption defines the ordering options for the Secret queries.
@@ -87,14 +90,19 @@ func ByTeamID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTeamID, opts...).ToFunc()
 }
 
-// ByName orders the results by the name field.
-func ByName(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldName, opts...).ToFunc()
+// ByLabel orders the results by the label field.
+func ByLabel(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLabel, opts...).ToFunc()
 }
 
-// ByHosts orders the results by the hosts field.
-func ByHosts(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldHosts, opts...).ToFunc()
+// ByDescription orders the results by the description field.
+func ByDescription(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDescription, opts...).ToFunc()
+}
+
+// ByAllowlist orders the results by the allowlist field.
+func ByAllowlist(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAllowlist, opts...).ToFunc()
 }
 
 // ByTeamField orders the results by team field.

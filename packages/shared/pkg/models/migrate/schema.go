@@ -143,8 +143,9 @@ var (
 		{Name: "id", Type: field.TypeUUID, Unique: true, Default: "gen_random_uuid()"},
 		{Name: "created_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
-		{Name: "name", Type: field.TypeString, Default: "Unnamed Secret", SchemaType: map[string]string{"postgres": "text"}},
-		{Name: "hosts", Type: field.TypeOther, SchemaType: map[string]string{"postgres": "text[]"}},
+		{Name: "label", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "description", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "allowlist", Type: field.TypeOther, SchemaType: map[string]string{"postgres": "text[]"}},
 		{Name: "team_id", Type: field.TypeUUID},
 	}
 	// SecretsTable holds the schema information for the "secrets" table.
@@ -155,7 +156,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "secrets_teams_secrets",
-				Columns:    []*schema.Column{SecretsColumns[5]},
+				Columns:    []*schema.Column{SecretsColumns[6]},
 				RefColumns: []*schema.Column{TeamsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},

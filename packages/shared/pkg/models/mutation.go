@@ -4686,8 +4686,9 @@ type SecretMutation struct {
 	id            *uuid.UUID
 	created_at    *time.Time
 	updated_at    *time.Time
-	name          *string
-	hosts         *pq.StringArray
+	label         *string
+	description   *string
+	allowlist     *pq.StringArray
 	clearedFields map[string]struct{}
 	team          *uuid.UUID
 	clearedteam   bool
@@ -4921,76 +4922,112 @@ func (m *SecretMutation) ResetTeamID() {
 	m.team = nil
 }
 
-// SetName sets the "name" field.
-func (m *SecretMutation) SetName(s string) {
-	m.name = &s
+// SetLabel sets the "label" field.
+func (m *SecretMutation) SetLabel(s string) {
+	m.label = &s
 }
 
-// Name returns the value of the "name" field in the mutation.
-func (m *SecretMutation) Name() (r string, exists bool) {
-	v := m.name
+// Label returns the value of the "label" field in the mutation.
+func (m *SecretMutation) Label() (r string, exists bool) {
+	v := m.label
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldName returns the old "name" field's value of the Secret entity.
+// OldLabel returns the old "label" field's value of the Secret entity.
 // If the Secret object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SecretMutation) OldName(ctx context.Context) (v string, err error) {
+func (m *SecretMutation) OldLabel(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldName is only allowed on UpdateOne operations")
+		return v, errors.New("OldLabel is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldName requires an ID field in the mutation")
+		return v, errors.New("OldLabel requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldName: %w", err)
+		return v, fmt.Errorf("querying old value for OldLabel: %w", err)
 	}
-	return oldValue.Name, nil
+	return oldValue.Label, nil
 }
 
-// ResetName resets all changes to the "name" field.
-func (m *SecretMutation) ResetName() {
-	m.name = nil
+// ResetLabel resets all changes to the "label" field.
+func (m *SecretMutation) ResetLabel() {
+	m.label = nil
 }
 
-// SetHosts sets the "hosts" field.
-func (m *SecretMutation) SetHosts(pa pq.StringArray) {
-	m.hosts = &pa
+// SetDescription sets the "description" field.
+func (m *SecretMutation) SetDescription(s string) {
+	m.description = &s
 }
 
-// Hosts returns the value of the "hosts" field in the mutation.
-func (m *SecretMutation) Hosts() (r pq.StringArray, exists bool) {
-	v := m.hosts
+// Description returns the value of the "description" field in the mutation.
+func (m *SecretMutation) Description() (r string, exists bool) {
+	v := m.description
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldHosts returns the old "hosts" field's value of the Secret entity.
+// OldDescription returns the old "description" field's value of the Secret entity.
 // If the Secret object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SecretMutation) OldHosts(ctx context.Context) (v pq.StringArray, err error) {
+func (m *SecretMutation) OldDescription(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldHosts is only allowed on UpdateOne operations")
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldHosts requires an ID field in the mutation")
+		return v, errors.New("OldDescription requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldHosts: %w", err)
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
 	}
-	return oldValue.Hosts, nil
+	return oldValue.Description, nil
 }
 
-// ResetHosts resets all changes to the "hosts" field.
-func (m *SecretMutation) ResetHosts() {
-	m.hosts = nil
+// ResetDescription resets all changes to the "description" field.
+func (m *SecretMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetAllowlist sets the "allowlist" field.
+func (m *SecretMutation) SetAllowlist(pa pq.StringArray) {
+	m.allowlist = &pa
+}
+
+// Allowlist returns the value of the "allowlist" field in the mutation.
+func (m *SecretMutation) Allowlist() (r pq.StringArray, exists bool) {
+	v := m.allowlist
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAllowlist returns the old "allowlist" field's value of the Secret entity.
+// If the Secret object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SecretMutation) OldAllowlist(ctx context.Context) (v pq.StringArray, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAllowlist is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAllowlist requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAllowlist: %w", err)
+	}
+	return oldValue.Allowlist, nil
+}
+
+// ResetAllowlist resets all changes to the "allowlist" field.
+func (m *SecretMutation) ResetAllowlist() {
+	m.allowlist = nil
 }
 
 // ClearTeam clears the "team" edge to the Team entity.
@@ -5054,7 +5091,7 @@ func (m *SecretMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SecretMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m.created_at != nil {
 		fields = append(fields, secret.FieldCreatedAt)
 	}
@@ -5064,11 +5101,14 @@ func (m *SecretMutation) Fields() []string {
 	if m.team != nil {
 		fields = append(fields, secret.FieldTeamID)
 	}
-	if m.name != nil {
-		fields = append(fields, secret.FieldName)
+	if m.label != nil {
+		fields = append(fields, secret.FieldLabel)
 	}
-	if m.hosts != nil {
-		fields = append(fields, secret.FieldHosts)
+	if m.description != nil {
+		fields = append(fields, secret.FieldDescription)
+	}
+	if m.allowlist != nil {
+		fields = append(fields, secret.FieldAllowlist)
 	}
 	return fields
 }
@@ -5084,10 +5124,12 @@ func (m *SecretMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case secret.FieldTeamID:
 		return m.TeamID()
-	case secret.FieldName:
-		return m.Name()
-	case secret.FieldHosts:
-		return m.Hosts()
+	case secret.FieldLabel:
+		return m.Label()
+	case secret.FieldDescription:
+		return m.Description()
+	case secret.FieldAllowlist:
+		return m.Allowlist()
 	}
 	return nil, false
 }
@@ -5103,10 +5145,12 @@ func (m *SecretMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldUpdatedAt(ctx)
 	case secret.FieldTeamID:
 		return m.OldTeamID(ctx)
-	case secret.FieldName:
-		return m.OldName(ctx)
-	case secret.FieldHosts:
-		return m.OldHosts(ctx)
+	case secret.FieldLabel:
+		return m.OldLabel(ctx)
+	case secret.FieldDescription:
+		return m.OldDescription(ctx)
+	case secret.FieldAllowlist:
+		return m.OldAllowlist(ctx)
 	}
 	return nil, fmt.Errorf("unknown Secret field %s", name)
 }
@@ -5137,19 +5181,26 @@ func (m *SecretMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTeamID(v)
 		return nil
-	case secret.FieldName:
+	case secret.FieldLabel:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetName(v)
+		m.SetLabel(v)
 		return nil
-	case secret.FieldHosts:
+	case secret.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case secret.FieldAllowlist:
 		v, ok := value.(pq.StringArray)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetHosts(v)
+		m.SetAllowlist(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Secret field %s", name)
@@ -5218,11 +5269,14 @@ func (m *SecretMutation) ResetField(name string) error {
 	case secret.FieldTeamID:
 		m.ResetTeamID()
 		return nil
-	case secret.FieldName:
-		m.ResetName()
+	case secret.FieldLabel:
+		m.ResetLabel()
 		return nil
-	case secret.FieldHosts:
-		m.ResetHosts()
+	case secret.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case secret.FieldAllowlist:
+		m.ResetAllowlist()
 		return nil
 	}
 	return fmt.Errorf("unknown Secret field %s", name)
