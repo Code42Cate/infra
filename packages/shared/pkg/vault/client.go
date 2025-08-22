@@ -170,8 +170,7 @@ func (c *Client) renewToken(ctx context.Context) {
 }
 
 var (
-	ErrSecretNotFound      = errors.New("secret not found")
-	ErrSecretValueNotFound = errors.New("secret value not found")
+	ErrSecretNotFound = errors.New("secret not found")
 )
 
 // GetSecret retrieves a secret and its unseralized metadata from Vault at the specified path
@@ -187,7 +186,7 @@ func (c *Client) GetSecret(ctx context.Context, path string) (string, map[string
 
 	value, ok := resp.Data.Data[SECRET_KEY].(string)
 	if !ok {
-		return "", nil, ErrSecretValueNotFound
+		return "", nil, ErrSecretNotFound
 	}
 
 	c.logger.Debug("secret retrieved",

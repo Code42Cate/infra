@@ -61,11 +61,9 @@ func (c *CertificateCache) GetCertificate(
 	// we dont really care about the key, just about its existence. if just the cert exists, the mitm will fail
 	_, _, keyErr := c.vault.GetSecret(ctx, fmt.Sprintf("%s/key", teamId))
 
-	// TODO: Cert expiry things
 	// no cert found, create new one and save it
-	// TODO: probably use the same error type
-	if errors.Is(certErr, vault.ErrSecretNotFound) || errors.Is(certErr, vault.ErrSecretValueNotFound) ||
-		errors.Is(keyErr, vault.ErrSecretNotFound) || errors.Is(keyErr, vault.ErrSecretValueNotFound) {
+	// There is a race condition here if two different orch clients think they need to create a new cert
+	if errors.Is(certErr, vault.ErrSecretNotFound) || errors.Is(keyErr, vault.ErrSecretNotFound) {
 		newCert, newPriv, err := GenerateRootCert(certLifetimeDays, "e2b.dev")
 		if err != nil {
 			return "", err
