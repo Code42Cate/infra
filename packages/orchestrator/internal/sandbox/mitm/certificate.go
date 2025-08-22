@@ -12,7 +12,6 @@ import (
 )
 
 func GenerateRootCert(ttlDays int, commonName string) (certPEM string, keyPEM string, err error) {
-
 	serialLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	notBefore := time.Now().Add(-time.Hour)
 	notAfter := time.Now().AddDate(ttlDays/365, 0, 0)

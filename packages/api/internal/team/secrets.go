@@ -16,7 +16,6 @@ import (
 )
 
 func CreateSecret(ctx context.Context, db *db.DB, secretVault *vault.Client, teamID uuid.UUID, name string, value string, hosts []string) (*models.Secret, string, error) {
-
 	// Create the secret record (only storing metadata, not the actual value)
 	secret, err := db.Client.Secret.
 		Create().

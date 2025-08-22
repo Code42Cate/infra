@@ -112,7 +112,6 @@ func (ppb *PostProcessingBuilder) Build(
 	currentLayer phases.LayerResult,
 	_ string,
 ) (phases.LayerResult, error) {
-
 	// ppb.BuildContext.Config.TeamID
 	// TODO: Inject cert here
 

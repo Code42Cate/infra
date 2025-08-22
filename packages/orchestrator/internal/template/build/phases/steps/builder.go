@@ -138,7 +138,7 @@ func (sb *StepBuilder) Build(
 	prefix := sb.Prefix()
 	step := sb.step
 
-	//sb.Config.TeamID
+	// sb.Config.TeamID
 
 	sbxConfig := sandbox.Config{
 		BaseTemplateID: baseTemplateID,

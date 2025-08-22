@@ -27,7 +27,6 @@ func NewCertificateCache(ctx context.Context, vault vault.VaultBackend) (*Certif
 	)
 
 	cache.OnEviction(func(ctx context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, string]) {
-
 	})
 
 	return &CertificateCache{
@@ -44,7 +43,6 @@ func (c *CertificateCache) GetCertificate(
 	ctx context.Context,
 	teamId string,
 ) (string, error) {
-
 	cachedCert := c.cache.Get(
 		teamId,
 		ttlcache.WithTTL[string, string](certCacheExpiration),
@@ -52,7 +50,6 @@ func (c *CertificateCache) GetCertificate(
 
 	if cachedCert != nil {
 		return cachedCert.Value(), nil
-
 	}
 
 	// check if its in the vault
@@ -83,5 +80,4 @@ func (c *CertificateCache) GetCertificate(
 	c.cache.Set(teamId, cert, time.Duration(certLifetimeDays)*time.Hour*24)
 
 	return cert, nil
-
 }

@@ -14,9 +14,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/e2b-dev/infra/packages/envd/internal/host"
 	"github.com/e2b-dev/infra/packages/envd/internal/logs"
-	"github.com/rs/zerolog"
 )
 
 func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +97,6 @@ func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
 // installCertificate installs the provided certificate into the trusted certificate store
 // this is basically like running update-ca-certificates, but much faster
 func installCertificate(certificate string, logger zerolog.Logger) error {
-
 	certData := []byte(certificate)
 	sourceCert := "/usr/local/share/ca-certificates/e2b.crt"
 	certsDir := "/etc/ssl/certs"
@@ -121,7 +121,7 @@ func installCertificate(certificate string, logger zerolog.Logger) error {
 		bundleData = append(bundleData, '\n')
 	}
 
-	f, err := os.OpenFile(bundleFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(bundleFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to open bundle file: %w", err)
 	}
