@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -56,6 +57,27 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 		telemetry.ReportCriticalError(ctx, "error when parsing request", err)
 
 		return
+	}
+
+	// There should be a limit to how many hosts can be added to a secret. Realistically its going to be 0 or 1 in most cases, 10 is already a lot. Adjust as needed
+	maxHostsCount := 10
+	if len(body.Hosts) > maxHostsCount {
+		a.sendAPIStoreError(c, http.StatusBadRequest, fmt.Sprintf("Too many hosts (%d), only %d allowed", len(body.Hosts), maxHostsCount))
+		return
+	}
+
+	// default value, should be done by the SDK/Dashboard/CLI but just in case
+	if len(body.Hosts) == 0 {
+		body.Hosts = []string{"*"}
+	}
+
+	for _, host := range body.Hosts {
+		// match continues scanning to the end of the pattern even after a mismatch, so by matching "" we can check if the host is a valid pattern
+		// https://go-review.googlesource.com/c/go/+/264397
+		if _, err := filepath.Match(host, ""); err != nil {
+			a.sendAPIStoreError(c, http.StatusBadRequest, fmt.Sprintf("Invalid host pattern: %s", host))
+			return
+		}
 	}
 
 	secret, fullValue, err := team.CreateSecret(ctx, a.db, a.secretVault, teamID, body.Name, body.Value, body.Hosts)
