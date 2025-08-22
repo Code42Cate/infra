@@ -94,9 +94,9 @@ func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// TODO: dont double append on pause/resume
 // installCertificate installs the provided certificate into the trusted certificate store
 // this is basically like running update-ca-certificates, but much faster
+// TODO: If you rotate certs, old ones will still be trusted until they expire
 func installCertificate(certificate string, logger zerolog.Logger) error {
 	certData := []byte(certificate)
 	sourceCert := "/usr/local/share/ca-certificates/e2b.crt"
