@@ -214,6 +214,8 @@ func CreateSandbox(
 		return nil, fmt.Errorf("failed to get network slot: %w", err)
 	}
 
+	// TODO: right now the decision wether to MITM or not is based on the existence of the to-be-injected root certificate
+	// This is rather stupid
 	if config.Envd.RootCertificate != "" {
 		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
 		cleanup.Add(func(ctx context.Context) error {
