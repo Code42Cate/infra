@@ -51,6 +51,7 @@ func (c *CertificateCache) GetCertificate(
 	ctx context.Context,
 	teamId string,
 ) (string, string, error) {
+	// Check cache first
 	cachedCert := c.cache.Get(
 		teamId,
 		ttlcache.WithTTL[string, Certificate](certCacheExpiration),
@@ -60,37 +61,55 @@ func (c *CertificateCache) GetCertificate(
 		return cachedCert.Value().Cert, cachedCert.Value().Key, nil
 	}
 
-	// check if its in the vault
+	// Try to get certificate from vault
+	// TODO: This should be a single get call
 	cert, _, certErr := c.vault.GetSecret(ctx, fmt.Sprintf("%s/cert", teamId))
 	key, _, keyErr := c.vault.GetSecret(ctx, fmt.Sprintf("%s/key", teamId))
 
-	// no cert found or it needs to be rotated, create new one and save it
-	if errors.Is(certErr, vault.ErrSecretNotFound) || errors.Is(keyErr, vault.ErrSecretNotFound) ||
-		(cert != "" && key != "" && shouldRotate(cert, key)) {
-		newCert, newPriv, err := GenerateRootCert(certLifetimeDays, "e2b.dev")
-		if err != nil {
-			return "", "", err
-		}
-		if err := c.vault.WriteSecret(ctx, fmt.Sprintf("%s/cert", teamId), newCert, nil); err != nil {
-			return "", "", err
-		}
-		if err := c.vault.WriteSecret(ctx, fmt.Sprintf("%s/key", teamId), newPriv, nil); err != nil {
-			return "", "", err
-		}
-		c.cache.Set(teamId, Certificate{
-			Cert: newCert,
-			Key:  newPriv,
-		}, time.Duration(certLifetimeDays)*time.Hour*24)
-		return newCert, newPriv, nil
-	} else if keyErr != nil || certErr != nil {
+	// Handle errors that aren't "not found", maybe this should be handled as not found anyway
+	if (certErr != nil && !errors.Is(certErr, vault.ErrSecretNotFound)) ||
+		(keyErr != nil && !errors.Is(keyErr, vault.ErrSecretNotFound)) {
 		return "", "", fmt.Errorf("failed to get certificate and private key from vault: %w %w", certErr, keyErr)
-	} else {
-
 	}
 
-	c.cache.Set(teamId, Certificate{Cert: cert, Key: key}, time.Duration(certLifetimeDays)*time.Hour*24)
+	// Certificate doesn't exist - create a new one
+	if errors.Is(certErr, vault.ErrSecretNotFound) || errors.Is(keyErr, vault.ErrSecretNotFound) {
+		return c.generateAndStoreCertificate(ctx, teamId)
+	}
 
+	// Certificate exists but needs rotation
+	if shouldRotate(cert, key) {
+		return c.generateAndStoreCertificate(ctx, teamId)
+	}
+
+	// Certificate is valid - cache and return it
+	c.cache.Set(teamId, Certificate{Cert: cert, Key: key}, time.Duration(certLifetimeDays)*time.Hour*24)
 	return cert, key, nil
+}
+
+func (c *CertificateCache) generateAndStoreCertificate(
+	ctx context.Context,
+	teamId string,
+) (string, string, error) {
+	newCert, newPriv, err := GenerateRootCert(certLifetimeDays, "e2b.dev")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate certificate: %w", err)
+	}
+
+	if err := c.vault.WriteSecret(ctx, fmt.Sprintf("%s/cert", teamId), newCert, nil); err != nil {
+		return "", "", fmt.Errorf("failed to write certificate to vault: %w", err)
+	}
+
+	if err := c.vault.WriteSecret(ctx, fmt.Sprintf("%s/key", teamId), newPriv, nil); err != nil {
+		return "", "", fmt.Errorf("failed to write private key to vault: %w", err)
+	}
+
+	c.cache.Set(teamId, Certificate{
+		Cert: newCert,
+		Key:  newPriv,
+	}, time.Duration(certLifetimeDays)*time.Hour*24)
+
+	return newCert, newPriv, nil
 }
 
 // shouldRotate returns true if the certificate cant be parsed or the expiry is within the next 30 days (or in the past)
