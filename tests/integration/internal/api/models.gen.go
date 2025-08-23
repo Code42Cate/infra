@@ -78,6 +78,27 @@ type CreatedAccessToken struct {
 	Token string `json:"token"`
 }
 
+// CreatedSecret defines model for CreatedSecret.
+type CreatedSecret struct {
+	// Allowlist List of allowlist where this secret can be used
+	Allowlist []string `json:"allowlist"`
+
+	// CreatedAt When the secret was created
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Description Description of the secret
+	Description string `json:"description"`
+
+	// Id Identifier of the secret
+	Id openapi_types.UUID `json:"id"`
+
+	// Label Label of the secret
+	Label string `json:"label"`
+
+	// Value Raw value of the secret (only shown on creation)
+	Value string `json:"value"`
+}
+
 // CreatedTeamAPIKey defines model for CreatedTeamAPIKey.
 type CreatedTeamAPIKey struct {
 	// CreatedAt Timestamp of API key creation
@@ -208,6 +229,7 @@ type NewSandbox struct {
 	AutoPause *bool            `json:"autoPause,omitempty"`
 	EnvVars   *EnvVars         `json:"envVars,omitempty"`
 	Metadata  *SandboxMetadata `json:"metadata,omitempty"`
+	Secrets   *Secrets         `json:"secrets,omitempty"`
 
 	// Secure Secure all system communication with sandbox
 	Secure *bool `json:"secure,omitempty"`
@@ -217,6 +239,21 @@ type NewSandbox struct {
 
 	// Timeout Time to live for the sandbox in seconds.
 	Timeout *int32 `json:"timeout,omitempty"`
+}
+
+// NewSecret defines model for NewSecret.
+type NewSecret struct {
+	// Allowlist List of allowlist where this secret can be used
+	Allowlist []string `json:"allowlist"`
+
+	// Description Description of the secret
+	Description string `json:"description"`
+
+	// Label Label of the secret
+	Label string `json:"label"`
+
+	// Value Value of the secret
+	Value string `json:"value"`
 }
 
 // NewTeamAPIKey defines model for NewTeamAPIKey.
@@ -469,6 +506,27 @@ type SandboxesWithMetrics struct {
 	Sandboxes map[string]SandboxMetric `json:"sandboxes"`
 }
 
+// Secret defines model for Secret.
+type Secret struct {
+	// Allowlist List of allowlist where this secret can be used
+	Allowlist []string `json:"allowlist"`
+
+	// CreatedAt When the secret was created
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Description Description of the secret
+	Description *string `json:"description,omitempty"`
+
+	// Id Identifier of the secret
+	Id openapi_types.UUID `json:"id"`
+
+	// Label Label of the secret
+	Label string `json:"label"`
+}
+
+// Secrets defines model for Secrets.
+type Secrets map[string]string
+
 // Team defines model for Team.
 type Team struct {
 	// ApiKey API key for the team
@@ -700,6 +758,9 @@ type NodeID = string
 // SandboxID defines model for sandboxID.
 type SandboxID = string
 
+// SecretID defines model for secretID.
+type SecretID = string
+
 // TeamID defines model for teamID.
 type TeamID = string
 
@@ -821,6 +882,9 @@ type PostSandboxesSandboxIDResumeJSONRequestBody = ResumedSandbox
 
 // PostSandboxesSandboxIDTimeoutJSONRequestBody defines body for PostSandboxesSandboxIDTimeout for application/json ContentType.
 type PostSandboxesSandboxIDTimeoutJSONRequestBody PostSandboxesSandboxIDTimeoutJSONBody
+
+// PostSecretsJSONRequestBody defines body for PostSecrets for application/json ContentType.
+type PostSecretsJSONRequestBody = NewSecret
 
 // PostTemplatesJSONRequestBody defines body for PostTemplates for application/json ContentType.
 type PostTemplatesJSONRequestBody = TemplateBuildRequest

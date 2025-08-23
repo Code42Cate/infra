@@ -1,4 +1,4 @@
-package team
+package secrets
 
 import (
 	"context"

@@ -1,18 +1,20 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/e2b-dev/infra/packages/api/internal/api"
-	"github.com/e2b-dev/infra/packages/api/internal/team"
+	"github.com/e2b-dev/infra/packages/api/internal/secrets"
 	"github.com/e2b-dev/infra/packages/api/internal/utils"
-	"github.com/e2b-dev/infra/packages/shared/pkg/models"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 )
@@ -60,6 +62,23 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 		return
 	}
 
+	if body.Label == "" {
+		a.sendAPIStoreError(c, http.StatusBadRequest, "Label cannot be empty")
+		return
+	}
+
+	// arbitrary limit
+	if len(body.Label) > 256 {
+		a.sendAPIStoreError(c, http.StatusBadRequest, fmt.Sprintf("Label cannot exceed 256 characters (got %d)", len(body.Label)))
+		return
+	}
+
+	// arbitrary limit
+	if len(body.Description) > 1024 {
+		a.sendAPIStoreError(c, http.StatusBadRequest, fmt.Sprintf("Description cannot exceed 1024 characters (got %d)", len(body.Description)))
+		return
+	}
+
 	// There should be a limit to how many hosts can be added to a secret. Realistically its going to be 0 or 1 in most cases, 10 is already a lot. Adjust as needed
 	maxHostsCount := 10
 	if len(body.Allowlist) > maxHostsCount {
@@ -73,15 +92,13 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 	}
 
 	for _, host := range body.Allowlist {
-		// match continues scanning to the end of the pattern even after a mismatch, so by matching "" we can check if the host is a valid pattern
-		// https://go-review.googlesource.com/c/go/+/264397
-		if _, err := filepath.Match(host, ""); err != nil {
-			a.sendAPIStoreError(c, http.StatusBadRequest, fmt.Sprintf("Invalid host pattern: %s", host))
+		if err := validateHostname(host); err != nil {
+			a.sendAPIStoreError(c, http.StatusBadRequest, err.Error())
 			return
 		}
 	}
 
-	secret, fullValue, err := team.CreateSecret(ctx, a.db, a.secretVault, teamID, body.Value, body.Label, body.Description, body.Allowlist)
+	secret, fullValue, err := secrets.CreateSecret(ctx, a.db, a.secretVault, teamID, body.Value, body.Label, body.Description, body.Allowlist)
 	if err != nil {
 		a.sendAPIStoreError(c, http.StatusInternalServerError, fmt.Sprintf("Error when creating team secret: %s", err))
 
@@ -112,17 +129,53 @@ func (a *APIStore) DeleteSecretsSecretID(c *gin.Context, secretID string) {
 		return
 	}
 
-	if err := team.DeleteSecret(ctx, a.db, a.secretVault, teamID, secretIDParsed); err != nil {
-		if models.IsNotFound(err) {
+	if err := secrets.DeleteSecret(ctx, a.db, a.secretVault, teamID, secretIDParsed); err != nil {
+		if errors.Is(err, secrets.ErrSecretNotFound) {
 			c.String(http.StatusNotFound, "id not found")
 			return
-		} else if err != nil {
-			a.sendAPIStoreError(c, http.StatusInternalServerError, fmt.Sprintf("Error when deleting secret: %s", err))
-
-			telemetry.ReportCriticalError(ctx, "error when deleting secret", err)
-			return
 		}
+		a.sendAPIStoreError(c, http.StatusInternalServerError, fmt.Sprintf("Error when deleting secret: %s", err))
+
+		telemetry.ReportCriticalError(ctx, "error when deleting secret", err)
+		return
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// ValidateHostname validates a hostname with wildcard support
+// Allowed: example.com, *.example.com, something.*.example.com, *, *.*
+// Not allowed: URLs with schemes, paths, or invalid characters
+func validateHostname(hostname string) error {
+
+	// First check if its a valid go glob pattern
+	// match continues scanning to the end of the pattern even after a mismatch, so by matching "" we can check if the host is a valid pattern
+	// https://go-review.googlesource.com/c/go/+/264397
+	if _, err := filepath.Match(hostname, ""); err != nil {
+		return fmt.Errorf("invalid hostname pattern: %w", err)
+	}
+
+	// Most will be a wildcard anyway so we can skip the rest of the checks
+	if hostname == "*" {
+		return nil
+	}
+
+	// Check for common URL indicators that make it invalid
+	if strings.Contains(hostname, "://") ||
+		strings.Contains(hostname, "/") ||
+		strings.HasPrefix(hostname, "http") {
+		return fmt.Errorf("invalid hostname pattern: %s, cannot contain schemes (https/http) or paths (/api/, /v2/)", hostname)
+	}
+
+	// Regex pattern for hostname validation with wildcards
+	// - Each label can be alphanumeric with hyphens (not starting/ending with hyphen)
+	// - OR it can be a wildcard (*)
+	// - Labels are separated by dots
+	pattern := `^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?|\*)(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?|\.\*)*$`
+
+	if matched, err := regexp.MatchString(pattern, hostname); err != nil || !matched {
+		return fmt.Errorf("invalid hostname pattern: %s", hostname)
+	}
+
+	return nil
 }
