@@ -51,6 +51,9 @@ type Config struct {
 
 	AllowInternetAccess *bool
 
+	RootCertificate    string
+	RootCertificateKey string
+
 	Envd EnvdMetadata
 }
 
@@ -217,7 +220,8 @@ func CreateSandbox(
 	// TODO: right now the decision wether to MITM or not is based on the existence of the to-be-injected root certificate
 	// This is rather stupid
 	if config.Envd.RootCertificate != "" {
-		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		// at this point i need to know which certificate version i should use
+		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
 		cleanup.Add(func(ctx context.Context) error {
 			return mitmproxy.Close(ctx)
 		})
@@ -422,7 +426,7 @@ func ResumeSandbox(
 	}
 
 	if config.Envd.RootCertificate != "" {
-		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
 		cleanup.Add(func(ctx context.Context) error {
 			return mitmproxy.Close(ctx)
 		})

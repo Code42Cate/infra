@@ -20,7 +20,7 @@ type MITMProxy struct {
 	stoppedChan chan struct{}
 }
 
-func NewMITMProxy(s *network.Slot, teamID string, sandboxID string) *MITMProxy {
+func NewMITMProxy(s *network.Slot, teamID string, sandboxID string, rootCertificate string, rootCertificateKey string) *MITMProxy {
 	m := &MITMProxy{
 		stopChan:    make(chan struct{}),
 		stoppedChan: make(chan struct{}),
@@ -50,20 +50,7 @@ func NewMITMProxy(s *network.Slot, teamID string, sandboxID string) *MITMProxy {
 		zap.Uint("httpPort", s.MitmProxyHTTPPort()),
 		zap.Uint("httpsPort", s.MitmProxyHTTPSPort()))
 
-	// At this point we know that the certificate exists. It would be nicer if we wouldnt have to make network requests to vault here but would get the certificate passed in the constructor
-	// No point in using the cache as we will only need the certificate and key once
-	priv, _, err := vaultClient.GetSecret(ctx, fmt.Sprintf("%s/key", teamID))
-	if err != nil {
-		zap.L().Error("Failed to get team root certificate key", zap.Error(err))
-		return nil
-	}
-	cert, _, err := vaultClient.GetSecret(ctx, fmt.Sprintf("%s/cert", teamID))
-	if err != nil {
-		zap.L().Error("Failed to get team root certificate", zap.Error(err))
-		return nil
-	}
-
-	caCert, err := loadCACertificate(cert, priv)
+	caCert, err := loadCACertificate(rootCertificate, rootCertificateKey)
 	if err != nil {
 		zap.L().Error("Failed to load CA certificate", zap.Error(err))
 		return nil

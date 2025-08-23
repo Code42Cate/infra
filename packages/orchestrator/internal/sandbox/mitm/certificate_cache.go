@@ -2,6 +2,8 @@ package mitm
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"time"
@@ -12,21 +14,27 @@ import (
 )
 
 const (
-	certCacheExpiration = time.Hour * 25
-	certLifetimeDays    = 365
+	certCacheExpiration = time.Hour * 24       // certCacheExpiration is the expiration time of the certificate cache in hours
+	certLifetimeDays    = 3650                 // 10y (max allowed according to SOC2), certLifetimeDays is the lifetime of the certificate in days
+	certRotateThreshold = time.Hour * 24 * 365 // certLifetime - certRotateThreshold is the time when the certificate should be rotated, the rotate threshold should be higher than the max *runtime* of a sandbox+cache expiration time (excl. pause/resume)
 )
 
+type Certificate struct {
+	Cert string
+	Key  string
+}
+
 type CertificateCache struct {
-	cache *ttlcache.Cache[string, string]
+	cache *ttlcache.Cache[string, Certificate]
 	vault vault.VaultBackend
 }
 
 func NewCertificateCache(ctx context.Context, vault vault.VaultBackend) (*CertificateCache, error) {
 	cache := ttlcache.New(
-		ttlcache.WithTTL[string, string](certCacheExpiration),
+		ttlcache.WithTTL[string, Certificate](certCacheExpiration),
 	)
 
-	cache.OnEviction(func(ctx context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, string]) {
+	cache.OnEviction(func(ctx context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, Certificate]) {
 	})
 
 	return &CertificateCache{
@@ -35,49 +43,83 @@ func NewCertificateCache(ctx context.Context, vault vault.VaultBackend) (*Certif
 	}, nil
 }
 
-func (c *CertificateCache) Items() map[string]*ttlcache.Item[string, string] {
+func (c *CertificateCache) Items() map[string]*ttlcache.Item[string, Certificate] {
 	return c.cache.Items()
 }
 
 func (c *CertificateCache) GetCertificate(
 	ctx context.Context,
 	teamId string,
-) (string, error) {
+) (string, string, error) {
 	cachedCert := c.cache.Get(
 		teamId,
-		ttlcache.WithTTL[string, string](certCacheExpiration),
+		ttlcache.WithTTL[string, Certificate](certCacheExpiration),
 	)
 
 	if cachedCert != nil {
-		return cachedCert.Value(), nil
+		return cachedCert.Value().Cert, cachedCert.Value().Key, nil
 	}
 
 	// check if its in the vault
 	cert, _, certErr := c.vault.GetSecret(ctx, fmt.Sprintf("%s/cert", teamId))
+	key, _, keyErr := c.vault.GetSecret(ctx, fmt.Sprintf("%s/key", teamId))
 
-	// we dont really care about the key, just about its existence. if just the cert exists, the mitm will fail
-	_, _, keyErr := c.vault.GetSecret(ctx, fmt.Sprintf("%s/key", teamId))
-
-	// no cert found, create new one and save it
-	// There is a race condition here if two different orch clients think they need to create a new cert
-	if errors.Is(certErr, vault.ErrSecretNotFound) || errors.Is(keyErr, vault.ErrSecretNotFound) {
+	// no cert found or it needs to be rotated, create new one and save it
+	if errors.Is(certErr, vault.ErrSecretNotFound) || errors.Is(keyErr, vault.ErrSecretNotFound) ||
+		(cert != "" && key != "" && shouldRotate(cert, key)) {
 		newCert, newPriv, err := GenerateRootCert(certLifetimeDays, "e2b.dev")
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		if err := c.vault.WriteSecret(ctx, fmt.Sprintf("%s/cert", teamId), newCert, nil); err != nil {
-			return "", err
+			return "", "", err
 		}
 		if err := c.vault.WriteSecret(ctx, fmt.Sprintf("%s/key", teamId), newPriv, nil); err != nil {
-			return "", err
+			return "", "", err
 		}
-		c.cache.Set(teamId, newCert, time.Duration(certLifetimeDays)*time.Hour*24)
-		return newCert, nil
+		c.cache.Set(teamId, Certificate{
+			Cert: newCert,
+			Key:  newPriv,
+		}, time.Duration(certLifetimeDays)*time.Hour*24)
+		return newCert, newPriv, nil
 	} else if keyErr != nil || certErr != nil {
-		return cert, fmt.Errorf("failed to get certificate and private key from vault: %w %w", certErr, keyErr)
+		return "", "", fmt.Errorf("failed to get certificate and private key from vault: %w %w", certErr, keyErr)
+	} else {
+
 	}
 
-	c.cache.Set(teamId, cert, time.Duration(certLifetimeDays)*time.Hour*24)
+	c.cache.Set(teamId, Certificate{Cert: cert, Key: key}, time.Duration(certLifetimeDays)*time.Hour*24)
 
-	return cert, nil
+	return cert, key, nil
+}
+
+// shouldRotate returns true if the certificate cant be parsed or the expiry is within the next 30 days (or in the past)
+// If certLifetimeDays is less than or equal to certRotateThreshold, each sandbox will get a new certificate (bad idea)
+func shouldRotate(cert string, key string) bool {
+	// Parse the PEM encoded certificate
+	block, _ := pem.Decode([]byte(cert))
+	if block == nil || block.Type != "CERTIFICATE" {
+		// If we can't parse the certificate, rotate it to be safe
+		return true
+	}
+
+	// Parse the certificate
+	parsedCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		// If we can't parse the certificate, rotate it to be safe
+		return true
+	}
+
+	// Check if the certificate expires within the next 30 days
+	thirtyDaysFromNow := time.Now().Add(certRotateThreshold)
+	if parsedCert.NotAfter.Before(thirtyDaysFromNow) {
+		return true
+	}
+
+	// Also check if the certificate is already expired
+	if parsedCert.NotAfter.Before(time.Now()) {
+		return true
+	}
+
+	return false
 }
