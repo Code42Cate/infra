@@ -8,8 +8,9 @@ CREATE TABLE IF NOT EXISTS "public"."secrets"
     "created_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" timestamptz NULL,
     "team_id" uuid NOT NULL,
-    "name" text NOT NULL DEFAULT 'Unnamed Secret',
-    "hosts" text[] NOT NULL,
+    "label" text NOT NULL DEFAULT 'Unlabelled Secret',
+    "description" text NOT NULL DEFAULT '',
+    "allowlist" text[] NOT NULL,
     PRIMARY KEY ("id"),
     CONSTRAINT "secrets_teams_team_secrets" FOREIGN KEY ("team_id") REFERENCES "public"."teams" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
