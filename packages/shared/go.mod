@@ -56,6 +56,7 @@ require (
 )
 
 require github.com/hashicorp/vault-client-go v0.4.3
+require github.com/golang-jwt/jwt/v5 v5.2.2
 
 require (
 	ariga.io/atlas v0.15.0 // indirect
@@ -156,7 +157,6 @@ require (
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogo/status v1.1.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -301,6 +301,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
+	k8s.io/client-go v1.5.2 // indirect
 )
 
 // https://github.com/grafana/loki/issues/2826

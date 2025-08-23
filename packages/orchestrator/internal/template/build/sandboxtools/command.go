@@ -2,6 +2,7 @@ package sandboxtools
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/writer"
+	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/metadata"
 	"github.com/e2b-dev/infra/packages/shared/pkg/grpc"
 	"github.com/e2b-dev/infra/packages/shared/pkg/grpc/envd/process"
 	"github.com/e2b-dev/infra/packages/shared/pkg/grpc/envd/process/processconnect"
@@ -21,19 +23,13 @@ import (
 
 const commandTimeout = 600 * time.Second
 
-type CommandMetadata struct {
-	User    string            `json:"user,omitempty"`
-	WorkDir *string           `json:"workdir,omitempty"`
-	EnvVars map[string]string `json:"env_vars,omitempty"`
-}
-
 func RunCommandWithOutput(
 	ctx context.Context,
 	tracer trace.Tracer,
 	proxy *proxy.SandboxProxy,
 	sandboxID string,
 	command string,
-	metadata CommandMetadata,
+	metadata metadata.Context,
 	processOutput func(stdout, stderr string),
 ) error {
 	return runCommandWithAllOptions(
@@ -55,7 +51,7 @@ func RunCommand(
 	proxy *proxy.SandboxProxy,
 	sandboxID string,
 	command string,
-	metadata CommandMetadata,
+	metadata metadata.Context,
 ) error {
 	return runCommandWithAllOptions(
 		ctx,
@@ -79,7 +75,7 @@ func RunCommandWithLogger(
 	id string,
 	sandboxID string,
 	command string,
-	metadata CommandMetadata,
+	metadata metadata.Context,
 ) error {
 	return RunCommandWithConfirmation(
 		ctx,
@@ -105,7 +101,7 @@ func RunCommandWithConfirmation(
 	id string,
 	sandboxID string,
 	command string,
-	metadata CommandMetadata,
+	metadata metadata.Context,
 	confirmCh chan<- struct{},
 ) error {
 	return runCommandWithAllOptions(
@@ -129,7 +125,7 @@ func runCommandWithAllOptions(
 	proxy *proxy.SandboxProxy,
 	sandboxID string,
 	command string,
-	metadata CommandMetadata,
+	metadata metadata.Context,
 	confirmCh chan<- struct{},
 	processOutput func(stdout, stderr string),
 ) error {
@@ -198,7 +194,7 @@ func runCommandWithAllOptions(
 				if !success {
 					processOutput("", end.GetStatus())
 
-					return fmt.Errorf("command failed: %s", end.GetStatus())
+					return errors.New(end.GetStatus())
 				}
 			}
 		}
@@ -236,7 +232,7 @@ func SyncChangesToDisk(
 		proxy,
 		sandboxID,
 		"sync",
-		CommandMetadata{
+		metadata.Context{
 			User: "root",
 		},
 	)

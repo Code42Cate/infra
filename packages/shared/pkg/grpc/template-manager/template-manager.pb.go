@@ -7,12 +7,13 @@
 package template_manager
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -852,23 +853,78 @@ func (x *TemplateBuildLogEntry) GetLevel() LogLevel {
 	return LogLevel_Debug
 }
 
+type TemplateBuildStatusReason struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Message string  `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Step    *string `protobuf:"bytes,2,opt,name=step,proto3,oneof" json:"step,omitempty"`
+}
+
+func (x *TemplateBuildStatusReason) Reset() {
+	*x = TemplateBuildStatusReason{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_template_manager_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TemplateBuildStatusReason) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TemplateBuildStatusReason) ProtoMessage() {}
+
+func (x *TemplateBuildStatusReason) ProtoReflect() protoreflect.Message {
+	mi := &file_template_manager_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TemplateBuildStatusReason.ProtoReflect.Descriptor instead.
+func (*TemplateBuildStatusReason) Descriptor() ([]byte, []int) {
+	return file_template_manager_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *TemplateBuildStatusReason) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *TemplateBuildStatusReason) GetStep() string {
+	if x != nil && x.Step != nil {
+		return *x.Step
+	}
+	return ""
+}
+
 // Logs from template build
 type TemplateBuildStatusResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Status     TemplateBuildState       `protobuf:"varint,1,opt,name=status,proto3,enum=TemplateBuildState" json:"status,omitempty"`
-	Metadata   *TemplateBuildMetadata   `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	Reason     *string                  `protobuf:"bytes,3,opt,name=reason,proto3,oneof" json:"reason,omitempty"`
-	Logs       []string                 `protobuf:"bytes,4,rep,name=logs,proto3" json:"logs,omitempty"`
-	LogEntries []*TemplateBuildLogEntry `protobuf:"bytes,5,rep,name=logEntries,proto3" json:"logEntries,omitempty"`
+	Status     TemplateBuildState         `protobuf:"varint,1,opt,name=status,proto3,enum=TemplateBuildState" json:"status,omitempty"`
+	Metadata   *TemplateBuildMetadata     `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Logs       []string                   `protobuf:"bytes,4,rep,name=logs,proto3" json:"logs,omitempty"`
+	LogEntries []*TemplateBuildLogEntry   `protobuf:"bytes,5,rep,name=logEntries,proto3" json:"logEntries,omitempty"`
+	Reason     *TemplateBuildStatusReason `protobuf:"bytes,6,opt,name=reason,proto3,oneof" json:"reason,omitempty"`
 }
 
 func (x *TemplateBuildStatusResponse) Reset() {
 	*x = TemplateBuildStatusResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_template_manager_proto_msgTypes[10]
+		mi := &file_template_manager_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -881,7 +937,7 @@ func (x *TemplateBuildStatusResponse) String() string {
 func (*TemplateBuildStatusResponse) ProtoMessage() {}
 
 func (x *TemplateBuildStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_template_manager_proto_msgTypes[10]
+	mi := &file_template_manager_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -894,7 +950,7 @@ func (x *TemplateBuildStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TemplateBuildStatusResponse.ProtoReflect.Descriptor instead.
 func (*TemplateBuildStatusResponse) Descriptor() ([]byte, []int) {
-	return file_template_manager_proto_rawDescGZIP(), []int{10}
+	return file_template_manager_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TemplateBuildStatusResponse) GetStatus() TemplateBuildState {
@@ -911,13 +967,6 @@ func (x *TemplateBuildStatusResponse) GetMetadata() *TemplateBuildMetadata {
 	return nil
 }
 
-func (x *TemplateBuildStatusResponse) GetReason() string {
-	if x != nil && x.Reason != nil {
-		return *x.Reason
-	}
-	return ""
-}
-
 func (x *TemplateBuildStatusResponse) GetLogs() []string {
 	if x != nil {
 		return x.Logs
@@ -928,6 +977,13 @@ func (x *TemplateBuildStatusResponse) GetLogs() []string {
 func (x *TemplateBuildStatusResponse) GetLogEntries() []*TemplateBuildLogEntry {
 	if x != nil {
 		return x.LogEntries
+	}
+	return nil
+}
+
+func (x *TemplateBuildStatusResponse) GetReason() *TemplateBuildStatusReason {
+	if x != nil {
+		return x.Reason
 	}
 	return nil
 }
@@ -1103,7 +1159,7 @@ func file_template_manager_proto_rawDescGZIP() []byte {
 }
 
 var file_template_manager_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_template_manager_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_template_manager_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_template_manager_proto_goTypes = []interface{}{
 	(LogLevel)(0),                       // 0: LogLevel
 	(TemplateBuildState)(0),             // 1: TemplateBuildState
@@ -1117,33 +1173,35 @@ var file_template_manager_proto_goTypes = []interface{}{
 	(*TemplateBuildDeleteRequest)(nil),  // 9: TemplateBuildDeleteRequest
 	(*TemplateBuildMetadata)(nil),       // 10: TemplateBuildMetadata
 	(*TemplateBuildLogEntry)(nil),       // 11: TemplateBuildLogEntry
-	(*TemplateBuildStatusResponse)(nil), // 12: TemplateBuildStatusResponse
-	(*timestamppb.Timestamp)(nil),       // 13: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),               // 14: google.protobuf.Empty
+	(*TemplateBuildStatusReason)(nil),   // 12: TemplateBuildStatusReason
+	(*TemplateBuildStatusResponse)(nil), // 13: TemplateBuildStatusResponse
+	(*timestamppb.Timestamp)(nil),       // 14: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 15: google.protobuf.Empty
 }
 var file_template_manager_proto_depIdxs = []int32{
 	4,  // 0: TemplateConfig.steps:type_name -> TemplateStep
 	5,  // 1: TemplateConfig.fromTemplate:type_name -> FromTemplateConfig
 	6,  // 2: TemplateCreateRequest.template:type_name -> TemplateConfig
 	0,  // 3: TemplateStatusRequest.level:type_name -> LogLevel
-	13, // 4: TemplateBuildLogEntry.timestamp:type_name -> google.protobuf.Timestamp
+	14, // 4: TemplateBuildLogEntry.timestamp:type_name -> google.protobuf.Timestamp
 	0,  // 5: TemplateBuildLogEntry.level:type_name -> LogLevel
 	1,  // 6: TemplateBuildStatusResponse.status:type_name -> TemplateBuildState
 	10, // 7: TemplateBuildStatusResponse.metadata:type_name -> TemplateBuildMetadata
 	11, // 8: TemplateBuildStatusResponse.logEntries:type_name -> TemplateBuildLogEntry
-	7,  // 9: TemplateService.TemplateCreate:input_type -> TemplateCreateRequest
-	8,  // 10: TemplateService.TemplateBuildStatus:input_type -> TemplateStatusRequest
-	9,  // 11: TemplateService.TemplateBuildDelete:input_type -> TemplateBuildDeleteRequest
-	2,  // 12: TemplateService.InitLayerFileUpload:input_type -> InitLayerFileUploadRequest
-	14, // 13: TemplateService.TemplateCreate:output_type -> google.protobuf.Empty
-	12, // 14: TemplateService.TemplateBuildStatus:output_type -> TemplateBuildStatusResponse
-	14, // 15: TemplateService.TemplateBuildDelete:output_type -> google.protobuf.Empty
-	3,  // 16: TemplateService.InitLayerFileUpload:output_type -> InitLayerFileUploadResponse
-	13, // [13:17] is the sub-list for method output_type
-	9,  // [9:13] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	12, // 9: TemplateBuildStatusResponse.reason:type_name -> TemplateBuildStatusReason
+	7,  // 10: TemplateService.TemplateCreate:input_type -> TemplateCreateRequest
+	8,  // 11: TemplateService.TemplateBuildStatus:input_type -> TemplateStatusRequest
+	9,  // 12: TemplateService.TemplateBuildDelete:input_type -> TemplateBuildDeleteRequest
+	2,  // 13: TemplateService.InitLayerFileUpload:input_type -> InitLayerFileUploadRequest
+	15, // 14: TemplateService.TemplateCreate:output_type -> google.protobuf.Empty
+	13, // 15: TemplateService.TemplateBuildStatus:output_type -> TemplateBuildStatusResponse
+	15, // 16: TemplateService.TemplateBuildDelete:output_type -> google.protobuf.Empty
+	3,  // 17: TemplateService.InitLayerFileUpload:output_type -> InitLayerFileUploadResponse
+	14, // [14:18] is the sub-list for method output_type
+	10, // [10:14] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_template_manager_proto_init() }
@@ -1273,6 +1331,18 @@ func file_template_manager_proto_init() {
 			}
 		}
 		file_template_manager_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TemplateBuildStatusReason); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_template_manager_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*TemplateBuildStatusResponse); i {
 			case 0:
 				return &v.state
@@ -1295,13 +1365,14 @@ func file_template_manager_proto_init() {
 	file_template_manager_proto_msgTypes[5].OneofWrappers = []interface{}{}
 	file_template_manager_proto_msgTypes[6].OneofWrappers = []interface{}{}
 	file_template_manager_proto_msgTypes[10].OneofWrappers = []interface{}{}
+	file_template_manager_proto_msgTypes[11].OneofWrappers = []interface{}{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_template_manager_proto_rawDesc,
 			NumEnums:      2,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

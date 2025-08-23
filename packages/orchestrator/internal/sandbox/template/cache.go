@@ -32,7 +32,6 @@ const (
 type Cache struct {
 	cache        *ttlcache.Cache[string, Template]
 	persistence  storage.StorageProvider
-	ctx          context.Context
 	buildStore   *build.DiffStore
 	blockMetrics blockmetrics.Metrics
 }
@@ -78,7 +77,6 @@ func NewCache(ctx context.Context, persistence storage.StorageProvider, metrics 
 		persistence:  persistence,
 		buildStore:   buildStore,
 		cache:        cache,
-		ctx:          ctx,
 	}, nil
 }
 
@@ -87,13 +85,12 @@ func (c *Cache) Items() map[string]*ttlcache.Item[string, Template] {
 }
 
 func (c *Cache) GetTemplate(
-	templateID,
+	ctx context.Context,
 	buildID,
 	kernelVersion,
 	firecrackerVersion string,
 ) (Template, error) {
 	storageTemplate, err := newTemplateFromStorage(
-		templateID,
 		buildID,
 		kernelVersion,
 		firecrackerVersion,
@@ -101,6 +98,7 @@ func (c *Cache) GetTemplate(
 		nil,
 		c.persistence,
 		c.blockMetrics,
+		nil,
 		nil,
 	)
 	if err != nil {
@@ -114,20 +112,21 @@ func (c *Cache) GetTemplate(
 	)
 
 	if !found {
-		go storageTemplate.Fetch(c.ctx, c.buildStore)
+		go storageTemplate.Fetch(ctx, c.buildStore)
 	}
 
 	return t.Value(), nil
 }
 
 func (c *Cache) AddSnapshot(
-	templateId,
+	ctx context.Context,
 	buildId,
 	kernelVersion,
 	firecrackerVersion string,
 	memfileHeader *header.Header,
 	rootfsHeader *header.Header,
-	localSnapfile *LocalFileLink,
+	localSnapfile File,
+	localMetafile File,
 	memfileDiff build.Diff,
 	rootfsDiff build.Diff,
 ) error {
@@ -146,7 +145,6 @@ func (c *Cache) AddSnapshot(
 	}
 
 	storageTemplate, err := newTemplateFromStorage(
-		templateId,
 		buildId,
 		kernelVersion,
 		firecrackerVersion,
@@ -155,6 +153,7 @@ func (c *Cache) AddSnapshot(
 		c.persistence,
 		c.blockMetrics,
 		localSnapfile,
+		localMetafile,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create template cache from storage: %w", err)
@@ -167,7 +166,7 @@ func (c *Cache) AddSnapshot(
 	)
 
 	if !found {
-		go storageTemplate.Fetch(c.ctx, c.buildStore)
+		go storageTemplate.Fetch(ctx, c.buildStore)
 	}
 
 	return nil
