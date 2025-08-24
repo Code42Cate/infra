@@ -161,7 +161,6 @@ func (a *APIStore) DeleteSecretsSecretID(c *gin.Context, secretID string) {
 // Allowed: example.com, *.example.com, something.*.example.com, *, *.*
 // Not allowed: URLs with schemes, paths, or invalid characters
 func validateHostname(hostname string) error {
-
 	// First check if its a valid go glob pattern
 	// match continues scanning to the end of the pattern even after a mismatch, so by matching "" we can check if the host is a valid pattern
 	// https://go-review.googlesource.com/c/go/+/264397

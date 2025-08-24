@@ -19,6 +19,7 @@ import (
 	"github.com/e2b-dev/infra/packages/api/internal/utils"
 	"github.com/e2b-dev/infra/packages/db/queries"
 	"github.com/e2b-dev/infra/packages/shared/pkg/consts"
+	featureflags "github.com/e2b-dev/infra/packages/shared/pkg/feature-flags"
 	"github.com/e2b-dev/infra/packages/shared/pkg/logger"
 	sbxlogger "github.com/e2b-dev/infra/packages/shared/pkg/logger/sandbox"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
@@ -160,6 +161,11 @@ func (a *APIStore) PostSandboxesSandboxIDResume(c *gin.Context, sandboxID api.Sa
 		envdAccessToken = &accessToken
 	}
 
+	secretsFlag, err := a.featureFlags.BoolFlag(featureflags.SecretsFlagName, teamInfo.Team.ID.String())
+	if err != nil {
+		zap.L().Error("error getting metrics read feature flag, soft failing", zap.Error(err))
+	}
+
 	sbx, createErr := a.startSandbox(
 		ctx,
 		snap.SandboxID,
@@ -175,6 +181,7 @@ func (a *APIStore) PostSandboxesSandboxIDResume(c *gin.Context, sandboxID api.Sa
 		snap.BaseEnvID,
 		autoPause,
 		envdAccessToken,
+		&secretsFlag,
 		snap.AllowInternetAccess,
 	)
 

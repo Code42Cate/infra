@@ -34,9 +34,6 @@ func NewCertificateCache(ctx context.Context, vault vault.VaultBackend) (*Certif
 		ttlcache.WithTTL[string, Certificate](certCacheExpiration),
 	)
 
-	cache.OnEviction(func(ctx context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, Certificate]) {
-	})
-
 	return &CertificateCache{
 		cache: cache,
 		vault: vault,

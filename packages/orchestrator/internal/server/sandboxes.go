@@ -60,11 +60,13 @@ func (s *server) Create(ctxConn context.Context, req *orchestrator.SandboxCreate
 		return nil, fmt.Errorf("failed to get template snapshot data: %w", err)
 	}
 
-	rootCertificate, rootCertificateKey, err := s.certificateCache.GetCertificate(ctx, req.Sandbox.TeamId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get root certificate: %w", err)
+	var rootCertificate, rootCertificateKey string
+	if req.Sandbox.GetAllowSecrets() {
+		rootCertificate, rootCertificateKey, err = s.certificateCache.GetCertificate(childCtx, req.Sandbox.TeamId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get root certificate: %w", err)
+		}
 	}
-	zap.L().Info("root certificate retrieved", zap.String("team_id", req.Sandbox.TeamId), zap.String("certificate", rootCertificate))
 
 	sbx, err := sandbox.ResumeSandbox(
 		childCtx,
@@ -81,6 +83,7 @@ func (s *server) Create(ctxConn context.Context, req *orchestrator.SandboxCreate
 
 			AllowInternetAccess: req.Sandbox.AllowInternetAccess,
 
+			// This will be passed to the proxy
 			RootCertificate:    rootCertificate,
 			RootCertificateKey: rootCertificateKey,
 

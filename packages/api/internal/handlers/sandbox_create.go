@@ -20,6 +20,7 @@ import (
 	"github.com/e2b-dev/infra/packages/api/internal/cache/instance"
 	"github.com/e2b-dev/infra/packages/api/internal/middleware/otel/metrics"
 	"github.com/e2b-dev/infra/packages/api/internal/utils"
+	featureflags "github.com/e2b-dev/infra/packages/shared/pkg/feature-flags"
 	"github.com/e2b-dev/infra/packages/shared/pkg/id"
 	"github.com/e2b-dev/infra/packages/shared/pkg/keys"
 	"github.com/e2b-dev/infra/packages/shared/pkg/logger"
@@ -143,6 +144,11 @@ func (a *APIStore) PostSandboxes(c *gin.Context) {
 		maps.Copy(envVars, secretEnvVars)
 	}
 
+	secretsFlag, err := a.featureFlags.BoolFlag(featureflags.SecretsFlagName, teamInfo.Team.ID.String())
+	if err != nil {
+		zap.L().Error("error getting metrics read feature flag, soft failing", zap.Error(err))
+	}
+
 	timeout := instance.InstanceExpiration
 	if body.Timeout != nil {
 		timeout = time.Duration(*body.Timeout) * time.Second
@@ -187,6 +193,7 @@ func (a *APIStore) PostSandboxes(c *gin.Context) {
 		env.TemplateID,
 		autoPause,
 		envdAccessToken,
+		&secretsFlag,
 		allowInternetAccess,
 	)
 	if createErr != nil {

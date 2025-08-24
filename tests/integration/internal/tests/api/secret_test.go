@@ -423,7 +423,6 @@ func TestCreateSecret(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, resp.StatusCode())
 		assert.Equal(t, maxDescription, resp.JSON201.Description)
 	})
-
 }
 
 func TestDeleteSecret(t *testing.T) {

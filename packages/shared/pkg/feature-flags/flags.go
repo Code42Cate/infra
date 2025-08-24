@@ -12,6 +12,7 @@ const (
 	MetricsWriteFlagName                BoolFlag = "sandbox-metrics-write"
 	MetricsReadFlagName                 BoolFlag = "sandbox-metrics-read"
 	SandboxLifeCycleEventsWriteFlagName BoolFlag = "sandbox-lifecycle-events-write"
+	SecretsFlagName                     BoolFlag = "secrets-injection"
 )
 
 type IntFlag string
@@ -34,6 +35,7 @@ var flagsBool = map[BoolFlag]bool{
 	MetricsWriteFlagName:                env.IsDevelopment(),
 	MetricsReadFlagName:                 env.IsDevelopment(),
 	SandboxLifeCycleEventsWriteFlagName: env.IsDevelopment(),
+	SecretsFlagName:                     env.IsDevelopment(),
 }
 
 var flagsInt = map[IntFlag]int{

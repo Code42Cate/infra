@@ -52,6 +52,7 @@ type Config struct {
 	HugePages       bool
 
 	AllowInternetAccess *bool
+	AllowSecrets        *bool
 
 	RootCertificate    string
 	RootCertificateKey string
@@ -220,11 +221,9 @@ func CreateSandbox(
 		return nil, fmt.Errorf("failed to get network slot: %w", err)
 	}
 
-	// TODO: right now the decision wether to MITM or not is based on the existence of the to-be-injected root certificate
-	// This is rather stupid
-	if config.Envd.RootCertificate != "" {
+	if config.AllowSecrets != nil && *config.AllowSecrets {
 		// at this point i need to know which certificate version i should use
-		mitmproxy := egress.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
+		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
 		cleanup.Add(func(ctx context.Context) error {
 			return mitmproxy.Close(ctx)
 		})
@@ -421,8 +420,8 @@ func ResumeSandbox(
 		return nil, fmt.Errorf("failed to get network slot: %w", err)
 	}
 
-	if config.Envd.RootCertificate != "" {
-		mitmproxy := egress.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
+	if config.AllowInternetAccess != nil && *config.AllowInternetAccess {
+		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
 		cleanup.Add(func(ctx context.Context) error {
 			return mitmproxy.Close(ctx)
 		})

@@ -13,15 +13,15 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
-type MITMProxy struct {
+type SecretProxy struct {
 	httpServer  *http.Server
 	httpsLn     net.Listener
 	stopChan    chan struct{}
 	stoppedChan chan struct{}
 }
 
-func NewMITMProxy(s *network.Slot, teamID string, sandboxID string, rootCertificate string, rootCertificateKey string) *MITMProxy {
-	m := &MITMProxy{
+func NewSecretEgressProxy(s *network.Slot, teamID string, sandboxID string, rootCertificate string, rootCertificateKey string) *SecretProxy {
+	m := &SecretProxy{
 		stopChan:    make(chan struct{}),
 		stoppedChan: make(chan struct{}),
 	}
@@ -66,7 +66,7 @@ func NewMITMProxy(s *network.Slot, teamID string, sandboxID string, rootCertific
 	return m
 }
 
-func (m *MITMProxy) startServers(s *network.Slot, proxy *goproxy.ProxyHttpServer) error {
+func (m *SecretProxy) startServers(s *network.Slot, proxy *goproxy.ProxyHttpServer) error {
 	// Setup and start HTTP server
 	m.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.MitmProxyHTTPPort()),
@@ -92,7 +92,7 @@ func (m *MITMProxy) startServers(s *network.Slot, proxy *goproxy.ProxyHttpServer
 	return nil
 }
 
-func (m *MITMProxy) runHTTPSHandler(ln net.Listener, proxy *goproxy.ProxyHttpServer) {
+func (m *SecretProxy) runHTTPSHandler(ln net.Listener, proxy *goproxy.ProxyHttpServer) {
 	defer close(m.stoppedChan)
 
 	for {
@@ -116,7 +116,7 @@ func (m *MITMProxy) runHTTPSHandler(ln net.Listener, proxy *goproxy.ProxyHttpSer
 }
 
 // Close gracefully shuts down the MITM proxy
-func (m *MITMProxy) Close(ctx context.Context) error {
+func (m *SecretProxy) Close(ctx context.Context) error {
 	if m == nil {
 		return nil
 	}

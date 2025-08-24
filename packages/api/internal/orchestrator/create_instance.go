@@ -44,6 +44,7 @@ func (o *Orchestrator) CreateSandbox(
 	baseTemplateID string,
 	autoPause bool,
 	envdAuthToken *string,
+	allowSecrets *bool,
 	allowInternetAccess *bool,
 ) (*api.Sandbox, *api.APIError) {
 	ctx, childSpan := o.tracer.Start(ctx, "create-sandbox")
@@ -134,6 +135,7 @@ func (o *Orchestrator) CreateSandbox(
 			Vcpu:                build.Vcpu,
 			Snapshot:            isResume,
 			AutoPause:           autoPause,
+			AllowSecrets:        allowSecrets,
 			AllowInternetAccess: allowInternetAccess,
 			TotalDiskSizeMb:     ut.FromPtr(build.TotalDiskSizeMb),
 		},
