@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS "public"."secrets"
     CONSTRAINT "secrets_teams_team_secrets" FOREIGN KEY ("team_id") REFERENCES "public"."teams" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
+-- Create index for efficient team queries
+CREATE INDEX IF NOT EXISTS idx_teams_secrets ON public.secrets (team_id);
+
 -- Enable RLS
 ALTER TABLE "public"."secrets" ENABLE ROW LEVEL SECURITY;
 
