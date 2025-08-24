@@ -25,7 +25,7 @@ import (
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox"
 	blockmetrics "github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/block/metrics"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/mitm"
+	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/egress"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/nbd"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/network"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/template"
@@ -227,8 +227,6 @@ func run(port, proxyPort uint) (success bool) {
 		zap.L().Fatal("failed to create sandbox proxy", zap.Error(err))
 	}
 
-	//	go mitm.NewMITMProxy(mitmHttpPort, mitmHttpsPort, sandboxes)
-
 	tracer := tel.TracerProvider.Tracer(serviceName)
 
 	networkPool, err := network.NewPool(ctx, tel.MeterProvider, network.NewSlotsPoolSize, network.ReusedSlotsPoolSize, clientID, tracer)
@@ -320,7 +318,7 @@ func run(port, proxyPort uint) (success bool) {
 		zap.L().Fatal("failed to create vault backend", zap.Error(err))
 	}
 
-	certificateCache, err := mitm.NewCertificateCache(ctx, vault)
+	certificateCache, err := egress.NewCertificateCache(ctx, vault)
 	if err != nil {
 		zap.L().Fatal("failed to create certificate cache", zap.Error(err))
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/grpcserver"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/mitm"
+	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/egress"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/nbd"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/network"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/template"
@@ -34,7 +34,7 @@ type server struct {
 	networkPool         *network.Pool
 	templateCache       *template.Cache
 	pauseMu             sync.Mutex
-	certificateCache    *mitm.CertificateCache
+	certificateCache    *egress.CertificateCache
 	devicePool          *nbd.DevicePool
 	persistence         storage.StorageProvider
 	featureFlags        *featureflags.Client
@@ -60,7 +60,7 @@ func New(
 	tel *telemetry.Client,
 	networkPool *network.Pool,
 	devicePool *nbd.DevicePool,
-	certificateCache *mitm.CertificateCache,
+	certificateCache *egress.CertificateCache,
 	templateCache *template.Cache,
 	tracer trace.Tracer,
 	info *service.ServiceInfo,

@@ -16,8 +16,8 @@ import (
 	globalconfig "github.com/e2b-dev/infra/packages/orchestrator/internal/config"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/block"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/build"
+	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/egress"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/fc"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/mitm"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/nbd"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/network"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/rootfs"
@@ -224,12 +224,12 @@ func CreateSandbox(
 	// This is rather stupid
 	if config.Envd.RootCertificate != "" {
 		// at this point i need to know which certificate version i should use
-		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
+		mitmproxy := egress.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
 		cleanup.Add(func(ctx context.Context) error {
 			return mitmproxy.Close(ctx)
 		})
 	} else {
-		bypassproxy := mitm.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		bypassproxy := egress.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
 		cleanup.Add(func(ctx context.Context) error {
 			return bypassproxy.Close(ctx)
 		})
@@ -422,12 +422,12 @@ func ResumeSandbox(
 	}
 
 	if config.Envd.RootCertificate != "" {
-		mitmproxy := mitm.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
+		mitmproxy := egress.NewMITMProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
 		cleanup.Add(func(ctx context.Context) error {
 			return mitmproxy.Close(ctx)
 		})
 	} else {
-		bypassproxy := mitm.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		bypassproxy := egress.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
 		cleanup.Add(func(ctx context.Context) error {
 			return bypassproxy.Close(ctx)
 		})

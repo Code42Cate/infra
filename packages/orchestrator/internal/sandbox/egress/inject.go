@@ -1,4 +1,4 @@
-package mitm
+package egress
 
 import (
 	"net/http"
