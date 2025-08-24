@@ -59,7 +59,6 @@ func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if initRequest.RootCertificate != nil {
-			logger.Info().Msg(*initRequest.RootCertificate)
 			if err := installCertificate(*initRequest.RootCertificate, logger); err != nil {
 				logger.Error().Msgf("Failed to install certificate: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
