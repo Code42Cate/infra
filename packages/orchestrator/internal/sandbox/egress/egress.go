@@ -20,7 +20,7 @@ type SecretProxy struct {
 	stoppedChan chan struct{}
 }
 
-func NewSecretEgressProxy(s *network.Slot, teamID string, sandboxID string, rootCertificate string, rootCertificateKey string) *SecretProxy {
+func NewSecretEgressProxy(s *network.Slot, teamID string, sandboxID string, rootCertificate string, rootCertificateKey string, vaultClient *vault.Client) *SecretProxy {
 	m := &SecretProxy{
 		stopChan:    make(chan struct{}),
 		stoppedChan: make(chan struct{}),
@@ -30,12 +30,14 @@ func NewSecretEgressProxy(s *network.Slot, teamID string, sandboxID string, root
 
 	proxy := goproxy.NewProxyHttpServer()
 
-	// if the vault client cant be created, we fail and sandbox doesn't start. Maybe it would make sense to ignore it and continue without it
-	// this would mean secret injection won't properly work but at least the sandbox will start
-	vaultClient, err := vault.NewClientFromEnv(ctx)
-	if err != nil {
-		zap.L().Error("Failed to create Vault client", zap.Error(err))
-		return nil
+	// This will be true for the build system
+	if vaultClient == nil {
+		var err error
+		vaultClient, err = vault.NewClientFromEnv(ctx)
+		if err != nil {
+			zap.L().Error("Failed to create Vault client", zap.Error(err))
+			return nil
+		}
 	}
 
 	secretsCache, err := NewSecretsCache(ctx, vaultClient)

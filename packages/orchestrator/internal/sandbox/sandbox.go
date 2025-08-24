@@ -31,6 +31,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage/header"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 	"github.com/e2b-dev/infra/packages/shared/pkg/utils"
+	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
 var defaultEnvdTimeout = utils.Must(time.ParseDuration(env.GetEnv("ENVD_TIMEOUT", "10s")))
@@ -222,11 +223,12 @@ func CreateSandbox(
 	}
 
 	if config.AllowSecrets != nil && *config.AllowSecrets {
-		// at this point i need to know which certificate version i should use
-		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
+		start := time.Now()
+		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey, nil)
 		cleanup.Add(func(ctx context.Context) error {
 			return mitmproxy.Close(ctx)
 		})
+		zap.L().Info("SecretEgressProxy created", zap.Duration("duration", time.Since(start)))
 	} else {
 		bypassproxy := egress.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
 		cleanup.Add(func(ctx context.Context) error {
@@ -314,6 +316,7 @@ func ResumeSandbox(
 	ctx context.Context,
 	tracer trace.Tracer,
 	networkPool *network.Pool,
+	vault *vault.Client,
 	t template.Template,
 	config Config,
 	runtime RuntimeMetadata,
@@ -421,10 +424,12 @@ func ResumeSandbox(
 	}
 
 	if config.AllowInternetAccess != nil && *config.AllowInternetAccess {
-		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey)
+		start := time.Now()
+		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey, vault)
 		cleanup.Add(func(ctx context.Context) error {
 			return mitmproxy.Close(ctx)
 		})
+		zap.L().Info("SecretEgressProxy created", zap.Duration("duration", time.Since(start)))
 	} else {
 		bypassproxy := egress.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
 		cleanup.Add(func(ctx context.Context) error {

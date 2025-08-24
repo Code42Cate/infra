@@ -31,6 +31,7 @@ func (f *ResumeSandbox) Sandbox(
 		ctx,
 		layerExecutor.tracer,
 		layerExecutor.networkPool,
+		nil,
 		template,
 		f.config,
 		sandbox.RuntimeMetadata{

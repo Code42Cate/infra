@@ -62,16 +62,19 @@ func (s *server) Create(ctxConn context.Context, req *orchestrator.SandboxCreate
 
 	var rootCertificate, rootCertificateKey string
 	if req.Sandbox.GetAllowSecrets() {
+		start := time.Now()
 		rootCertificate, rootCertificateKey, err = s.certificateCache.GetCertificate(childCtx, req.Sandbox.TeamId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get root certificate: %w", err)
 		}
+		zap.L().Info("Certificates fetched", zap.Duration("duration", time.Since(start)))
 	}
 
 	sbx, err := sandbox.ResumeSandbox(
 		childCtx,
 		s.tracer,
 		s.networkPool,
+		s.vault,
 		template,
 		sandbox.Config{
 			BaseTemplateID: req.Sandbox.BaseTemplateId,

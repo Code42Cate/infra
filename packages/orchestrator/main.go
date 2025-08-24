@@ -313,6 +313,7 @@ func run(port, proxyPort uint) (success bool) {
 		zap.L().Fatal("failed to create sandbox observer", zap.Error(err))
 	}
 
+	// Initializing the vault takes a bit (~150ms), which is why we pass it down to the sandbox proxy instead of initializing it multiple times for each proxy
 	vault, err := vault.NewClientFromEnv(ctx)
 	if err != nil {
 		zap.L().Fatal("failed to create vault backend", zap.Error(err))
@@ -323,7 +324,7 @@ func run(port, proxyPort uint) (success bool) {
 		zap.L().Fatal("failed to create certificate cache", zap.Error(err))
 	}
 
-	_, err = server.New(ctx, grpcSrv, tel, networkPool, devicePool, certificateCache, templateCache, tracer, serviceInfo, sandboxProxy, sandboxes, featureFlags, clickhouseBatcher, persistence)
+	_, err = server.New(ctx, grpcSrv, tel, networkPool, devicePool, vault, certificateCache, templateCache, tracer, serviceInfo, sandboxProxy, sandboxes, featureFlags, clickhouseBatcher, persistence)
 	if err != nil {
 		zap.L().Fatal("failed to create server", zap.Error(err))
 	}
