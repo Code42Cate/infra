@@ -427,7 +427,7 @@ func ResumeSandbox(
 		return nil, fmt.Errorf("failed to get metadata: %w", err)
 	}
 
-	if config.AllowInternetAccess != nil && *config.AllowInternetAccess {
+	if config.AllowSecrets != nil && *config.AllowSecrets {
 		start := time.Now()
 		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey, vault)
 		cleanup.Add(func(ctx context.Context) error {
