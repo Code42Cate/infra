@@ -28,6 +28,7 @@ var (
 	SandboxLifeCycleEventsWriteFlagName = newBoolFlag("sandbox-lifecycle-events-write", env.IsDevelopment())
 	SnapshotFeatureFlagName             = newBoolFlag("use-nfs-for-snapshots", env.IsDevelopment())
 	TemplateFeatureFlagName             = newBoolFlag("use-nfs-for-templates", env.IsDevelopment())
+	SecretsFlagName                     = newBoolFlag("secrets", env.IsDevelopment())
 )
 
 type IntFlag string

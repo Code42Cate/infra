@@ -44,6 +44,7 @@ func (o *Orchestrator) CreateSandbox(
 	baseTemplateID string,
 	autoPause bool,
 	envdAuthToken *string,
+	allowedSecrets *bool,
 	allowInternetAccess *bool,
 ) (*api.Sandbox, *api.APIError) {
 	ctx, childSpan := o.tracer.Start(ctx, "create-sandbox")

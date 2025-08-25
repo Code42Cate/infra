@@ -75,6 +75,12 @@ components:
       required: true
       schema:
         type: string
+    secretID:
+      name: secretID
+      in: path
+      required: true
+      schema:
+        type: string
 
   responses:
     "400":
@@ -192,6 +198,11 @@ components:
       additionalProperties:
         type: string
         description: Environment variables for the sandbox
+
+    Secrets:
+      additionalProperties:
+        type: string
+        description: Secrets for the sandbox
 
     SandboxLog:
       description: Log entry with timestamp and line
@@ -450,6 +461,8 @@ components:
           $ref: "#/components/schemas/SandboxMetadata"
         envVars:
           $ref: "#/components/schemas/EnvVars"
+        secrets:
+          $ref: "#/components/schemas/Secrets"
 
     ResumedSandbox:
       properties:
@@ -1014,6 +1027,86 @@ components:
           type: string
           description: New name for the API key
 
+    Secret:
+      required:
+        - id
+        - label
+        - allowlist
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identifier of the secret
+        label:
+          type: string
+          description: Label of the secret
+        description:
+          type: string
+          description: Description of the secret
+        allowlist:
+          type: array
+          items:
+            type: string
+          description: List of allowlist where this secret can be used
+        createdAt:
+          type: string
+          format: date-time
+          description: When the secret was created
+
+    CreatedSecret:
+      required:
+        - id
+        - value
+        - label
+        - allowlist
+        - description
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identifier of the secret
+        value:
+          type: string
+          description: Raw value of the secret (only shown on creation)
+        label:
+          type: string
+          description: Label of the secret
+        description:
+          type: string
+          description: Description of the secret
+        allowlist:
+          type: array
+          items:
+            type: string
+          description: List of allowlist where this secret can be used
+        createdAt:
+          type: string
+          format: date-time
+          description: When the secret was created
+
+    NewSecret:
+      required:
+        - label
+        - value
+        - allowlist
+        - description
+      properties:
+        label:
+          type: string
+          description: Label of the secret
+        value:
+          type: string
+          description: Value of the secret
+        allowlist:
+          type: array
+          items:
+            type: string
+          description: List of allowlist where this secret can be used
+        description:
+          type: string
+          description: Description of the secret
     Error:
       required:
         - code
@@ -1966,6 +2059,72 @@ paths:
       responses:
         "204":
           description: Team API key deleted successfully
+        "401":
+          $ref: "#/components/responses/401"
+        "404":
+          $ref: "#/components/responses/404"
+        "500":
+          $ref: "#/components/responses/500"
+
+  /secrets:
+    get:
+      description: List all team secrets
+      tags: [secrets]
+      security:
+        - ApiKeyAuth: []
+        - Supabase1TokenAuth: []
+          Supabase2TeamAuth: []
+      responses:
+        "200":
+          description: List of team secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Secret"
+        "401":
+          $ref: "#/components/responses/401"
+        "500":
+          $ref: "#/components/responses/500"
+    post:
+      description: Create a new team secret
+      tags: [secrets]
+      security:
+        - ApiKeyAuth: []
+        - Supabase1TokenAuth: []
+          Supabase2TeamAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSecret"
+      responses:
+        "201":
+          description: Team secret created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedSecret"
+        "401":
+          $ref: "#/components/responses/401"
+        "500":
+          $ref: "#/components/responses/500"
+
+  /secrets/{secretID}:
+    delete:
+      description: Delete a team secret
+      tags: [secrets]
+      security:
+        - ApiKeyAuth: []
+        - Supabase1TokenAuth: []
+          Supabase2TeamAuth: []
+      parameters:
+        - $ref: "#/components/parameters/secretID"
+      responses:
+        "204":
+          description: Team secret deleted successfully
         "401":
           $ref: "#/components/responses/401"
         "404":

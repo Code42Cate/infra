@@ -31,6 +31,7 @@ func (a *APIStore) startSandbox(
 	baseTemplateID string,
 	autoPause bool,
 	envdAccessToken *string,
+	allowSecrets *bool,
 	allowInternetAccess *bool,
 ) (*api.Sandbox, *api.APIError) {
 	startTime := time.Now()
@@ -55,6 +56,7 @@ func (a *APIStore) startSandbox(
 		baseTemplateID,
 		autoPause,
 		envdAccessToken,
+		allowSecrets,
 		allowInternetAccess,
 	)
 	if instanceErr != nil {

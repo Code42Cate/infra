@@ -36,6 +36,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/env"
 	featureflags "github.com/e2b-dev/infra/packages/shared/pkg/feature-flags"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
+	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
 var supabaseJWTSecretsString = strings.TrimSpace(os.Getenv("SUPABASE_JWT_SECRETS"))
@@ -59,6 +60,7 @@ type APIStore struct {
 	db                       *db.DB
 	sqlcDB                   *sqlcdb.Client
 	lokiClient               *loki.DefaultClient
+	secretVault              *vault.Client
 	templateCache            *templatecache.TemplateCache
 	templateBuildsCache      *templatecache.TemplatesBuildCache
 	authCache                *authcache.TeamAuthCache
@@ -160,6 +162,12 @@ func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
 		zap.L().Warn("LOKI_ADDRESS not set, disabling Loki client")
 	}
 
+	secretVault, err := vault.NewClientFromEnv(ctx)
+	if err != nil {
+		zap.L().Fatal("failed to create secret vault client", zap.Error(err))
+	}
+	zap.L().Info("Secret vault client initialized")
+
 	authCache := authcache.NewTeamAuthCache()
 	templateCache := templatecache.NewTemplateCache(sqlcDB)
 	templateSpawnCounter := utils.NewTemplateSpawnCounter(time.Minute, dbClient)
@@ -194,6 +202,7 @@ func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
 		posthog:                  posthogClient,
 		lokiClient:               lokiClient,
 		templateCache:            templateCache,
+		secretVault:              secretVault,
 		templateBuildsCache:      templateBuildsCache,
 		authCache:                authCache,
 		templateSpawnCounter:     templateSpawnCounter,
