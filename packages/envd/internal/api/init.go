@@ -48,6 +48,16 @@ func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
 			logger.Debug().Msg("Setting access token")
 			a.accessToken = initRequest.AccessToken
 		}
+
+		if initRequest.RootCertificate != nil {
+			if err := installCertificate(*initRequest.RootCertificate, logger); err != nil {
+				logger.Error().Msgf("Failed to install certificate: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			logger.Debug().Msg("Root certificate installed successfully")
+		}
 	}
 
 	go func() {
