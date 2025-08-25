@@ -52,18 +52,20 @@ func doRequestWithInfiniteRetries(ctx context.Context, method, address string, r
 }
 
 type PostInitJSONBody struct {
-	EnvVars     *map[string]string `json:"envVars"`
-	AccessToken *string            `json:"accessToken,omitempty"`
+	EnvVars         *map[string]string `json:"envVars"`
+	AccessToken     *string            `json:"accessToken,omitempty"`
+	RootCertificate *string            `json:"rootCertificate,omitempty"`
 }
 
-func (s *Sandbox) initEnvd(ctx context.Context, tracer trace.Tracer, envVars map[string]string, accessToken *string) error {
+func (s *Sandbox) initEnvd(ctx context.Context, tracer trace.Tracer, envVars map[string]string, accessToken *string, rootCertificate *string) error {
 	childCtx, childSpan := tracer.Start(ctx, "envd-init")
 	defer childSpan.End()
 
 	address := fmt.Sprintf("http://%s:%d/init", s.Slot.HostIPString(), consts.DefaultEnvdServerPort)
 	jsonBody := &PostInitJSONBody{
-		EnvVars:     &envVars,
-		AccessToken: accessToken,
+		EnvVars:         &envVars,
+		AccessToken:     accessToken,
+		RootCertificate: rootCertificate,
 	}
 
 	body, err := json.Marshal(jsonBody)

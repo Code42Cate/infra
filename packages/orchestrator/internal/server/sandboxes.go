@@ -61,10 +61,21 @@ func (s *server) Create(ctxConn context.Context, req *orchestrator.SandboxCreate
 		return nil, fmt.Errorf("failed to get template snapshot data: %w", err)
 	}
 
+	var rootCertificate, rootCertificateKey string
+	if req.Sandbox.GetAllowSecrets() {
+		start := time.Now()
+		rootCertificate, rootCertificateKey, err = s.certificateCache.GetCertificate(ctx, req.Sandbox.TeamId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get root certificate: %w", err)
+		}
+		zap.L().Info("Certificates fetched", zap.Duration("duration", time.Since(start)))
+	}
+
 	sbx, err := sandbox.ResumeSandbox(
 		ctx,
 		s.tracer,
 		s.networkPool,
+		s.vault,
 		template,
 		sandbox.Config{
 			BaseTemplateID: req.Sandbox.BaseTemplateId,
@@ -75,11 +86,15 @@ func (s *server) Create(ctxConn context.Context, req *orchestrator.SandboxCreate
 			HugePages:       req.Sandbox.HugePages,
 
 			AllowInternetAccess: req.Sandbox.AllowInternetAccess,
+			AllowSecrets:        req.Sandbox.AllowSecrets,
+			RootCertificate:     rootCertificate,
+			RootCertificateKey:  rootCertificateKey,
 
 			Envd: sandbox.EnvdMetadata{
-				Version:     req.Sandbox.EnvdVersion,
-				AccessToken: req.Sandbox.EnvdAccessToken,
-				Vars:        req.Sandbox.EnvVars,
+				Version:         req.Sandbox.EnvdVersion,
+				AccessToken:     req.Sandbox.EnvdAccessToken,
+				Vars:            req.Sandbox.EnvVars,
+				RootCertificate: rootCertificate,
 			},
 		},
 		sandbox.RuntimeMetadata{

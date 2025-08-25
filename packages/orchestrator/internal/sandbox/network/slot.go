@@ -63,6 +63,9 @@ type Slot struct {
 	vEthIp  net.IP
 	vrtMask net.IPMask
 
+	mitmProxyHTTPPort  uint
+	mitmProxyHTTPSPort uint
+
 	tapIp   net.IP
 	tapMask net.IPMask
 
@@ -118,6 +121,10 @@ func NewSlot(key string, idx int) (*Slot, error) {
 		vPeerIp: vPeerIp,
 		vEthIp:  vEthIp,
 		vrtMask: vrtNet.Mask,
+
+		// because we take 2 extra host ports per slot this will limit the amount of slots we can have and max slots should be roughly halfed (still 2^14 so probably fine)
+		mitmProxyHTTPPort:  10000 + uint(idx*2),
+		mitmProxyHTTPSPort: 10000 + uint(idx*2+1),
 
 		tapIp:   tapIp,
 		tapMask: tapNet.Mask,
@@ -205,6 +212,14 @@ func (s *Slot) TapCIDR() net.IPMask {
 
 func (s *Slot) TapMAC() string {
 	return tapMAC
+}
+
+func (s *Slot) MitmProxyHTTPPort() uint {
+	return s.mitmProxyHTTPPort
+}
+
+func (s *Slot) MitmProxyHTTPSPort() uint {
+	return s.mitmProxyHTTPSPort
 }
 
 func (s *Slot) InitializeFirewall() error {

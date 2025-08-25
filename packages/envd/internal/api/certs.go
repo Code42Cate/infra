@@ -23,11 +23,8 @@ func installCertificate(certificate string, logger zerolog.Logger) error {
 	pemLink := filepath.Join(certsDir, "e2b.pem")
 	bundleFile := filepath.Join(certsDir, "ca-certificates.crt")
 
-	// Wrap certificate with comment markers
-	wrappedCert := []byte("#E2B_CERT_START\n" + certificate + "\n#E2B_CERT_END")
-
 	// Write the certificate file
-	if err := os.WriteFile(sourceCert, wrappedCert, 0o644); err != nil {
+	if err := os.WriteFile(sourceCert, certData, 0o644); err != nil {
 		return fmt.Errorf("failed to write certificate file: %w", err)
 	}
 
@@ -45,12 +42,10 @@ func installCertificate(certificate string, logger zerolog.Logger) error {
 	}
 
 	// Check if the wrapped certificate is already in the bundle
-	if !bytes.Contains(existingBundle, wrappedCert) {
-		// Use wrapped certificate for bundle
-		bundleData := wrappedCert
+	if !bytes.Contains(existingBundle, certData) {
 		// Ensure trailing newline
-		if len(bundleData) > 0 && bundleData[len(bundleData)-1] != '\n' {
-			bundleData = append(bundleData, '\n')
+		if len(certData) > 0 && certData[len(certData)-1] != '\n' {
+			certData = append(certData, '\n')
 		}
 
 		f, err := os.OpenFile(bundleFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o644)
@@ -59,7 +54,7 @@ func installCertificate(certificate string, logger zerolog.Logger) error {
 		}
 		defer f.Close()
 
-		if _, err := f.Write(bundleData); err != nil {
+		if _, err := f.Write(certData); err != nil {
 			return fmt.Errorf("failed to write to bundle: %w", err)
 		}
 		logger.Debug().Msg("Certificate appended to bundle")

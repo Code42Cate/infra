@@ -16,6 +16,7 @@ import (
 	globalconfig "github.com/e2b-dev/infra/packages/orchestrator/internal/config"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/block"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/build"
+	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/egress"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/fc"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/nbd"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/network"
@@ -30,6 +31,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage/header"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 	"github.com/e2b-dev/infra/packages/shared/pkg/utils"
+	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
 var defaultEnvdTimeout = utils.Must(time.ParseDuration(env.GetEnv("ENVD_TIMEOUT", "10s")))
@@ -51,14 +53,19 @@ type Config struct {
 	HugePages       bool
 
 	AllowInternetAccess *bool
+	AllowSecrets        *bool
+
+	RootCertificate    string
+	RootCertificateKey string
 
 	Envd EnvdMetadata
 }
 
 type EnvdMetadata struct {
-	Vars        map[string]string
-	AccessToken *string
-	Version     string
+	Vars            map[string]string
+	AccessToken     *string
+	Version         string
+	RootCertificate string
 }
 
 type RuntimeMetadata struct {
@@ -214,6 +221,21 @@ func CreateSandbox(
 	if ips.err != nil {
 		return nil, fmt.Errorf("failed to get network slot: %w", err)
 	}
+
+	if config.AllowSecrets != nil && *config.AllowSecrets {
+		start := time.Now()
+		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey, nil)
+		cleanup.Add(func(ctx context.Context) error {
+			return mitmproxy.Close(ctx)
+		})
+		zap.L().Info("SecretEgressProxy created", zap.Duration("duration", time.Since(start)))
+	} else {
+		bypassproxy := egress.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		cleanup.Add(func(ctx context.Context) error {
+			return bypassproxy.Close(ctx)
+		})
+	}
+
 	fcHandle, err := fc.NewProcess(
 		childCtx,
 		tracer,
@@ -294,6 +316,7 @@ func ResumeSandbox(
 	ctx context.Context,
 	tracer trace.Tracer,
 	networkPool *network.Pool,
+	vault *vault.Client,
 	t template.Template,
 	config Config,
 	runtime RuntimeMetadata,
@@ -403,6 +426,21 @@ func ResumeSandbox(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metadata: %w", err)
 	}
+
+	if config.AllowInternetAccess != nil && *config.AllowInternetAccess {
+		start := time.Now()
+		mitmproxy := egress.NewSecretEgressProxy(ips.slot, runtime.TeamID, runtime.SandboxID, config.RootCertificate, config.RootCertificateKey, vault)
+		cleanup.Add(func(ctx context.Context) error {
+			return mitmproxy.Close(ctx)
+		})
+		zap.L().Info("SecretEgressProxy created", zap.Duration("duration", time.Since(start)))
+	} else {
+		bypassproxy := egress.NewBypassProxy(ips.slot, runtime.TeamID, runtime.SandboxID)
+		cleanup.Add(func(ctx context.Context) error {
+			return bypassproxy.Close(ctx)
+		})
+	}
+
 	fcHandle, fcErr := fc.NewProcess(
 		uffdStartCtx,
 		tracer,
@@ -926,7 +964,7 @@ func (s *Sandbox) WaitForEnvd(
 		}
 	}()
 
-	initErr := s.initEnvd(syncCtx, tracer, s.Config.Envd.Vars, s.Config.Envd.AccessToken)
+	initErr := s.initEnvd(syncCtx, tracer, s.Config.Envd.Vars, s.Config.Envd.AccessToken, &s.Config.Envd.RootCertificate)
 	if initErr != nil {
 		return fmt.Errorf("failed to init new envd: %w", initErr)
 	} else {
