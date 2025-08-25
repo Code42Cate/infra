@@ -10,7 +10,7 @@ echo "Making configuration immutable"
 {{ .BusyBox }} chattr +i /etc/resolv.conf
 
 # Install required packages if not already installed
-PACKAGES="systemd systemd-sysv openssh-server sudo chrony linuxptp socat curl"
+PACKAGES="systemd systemd-sysv openssh-server sudo chrony linuxptp socat curl ca-certificates"
 echo "Checking presence of the following packages: $PACKAGES"
 
 MISSING=""
@@ -41,6 +41,9 @@ echo "if [ -f ~/.bashrc ]; then source ~/.bashrc; fi; if [ -f ~/.profile ]; then
 
 echo "Remove root password"
 passwd -d root
+
+echo "Setting up ca-certificates"
+update-ca-certificates
 
 echo "Setting up chrony"
 mkdir -p /etc/chrony
