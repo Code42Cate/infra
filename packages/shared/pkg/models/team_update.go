@@ -13,6 +13,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/env"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/internal"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/predicate"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/tier"
@@ -187,6 +188,21 @@ func (tu *TeamUpdate) AddTeamAPIKeys(t ...*TeamAPIKey) *TeamUpdate {
 	return tu.AddTeamAPIKeyIDs(ids...)
 }
 
+// AddSecretIDs adds the "secrets" edge to the Secret entity by IDs.
+func (tu *TeamUpdate) AddSecretIDs(ids ...uuid.UUID) *TeamUpdate {
+	tu.mutation.AddSecretIDs(ids...)
+	return tu
+}
+
+// AddSecrets adds the "secrets" edges to the Secret entity.
+func (tu *TeamUpdate) AddSecrets(s ...*Secret) *TeamUpdate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return tu.AddSecretIDs(ids...)
+}
+
 // SetTeamTierID sets the "team_tier" edge to the Tier entity by ID.
 func (tu *TeamUpdate) SetTeamTierID(id string) *TeamUpdate {
 	tu.mutation.SetTeamTierID(id)
@@ -273,6 +289,27 @@ func (tu *TeamUpdate) RemoveTeamAPIKeys(t ...*TeamAPIKey) *TeamUpdate {
 		ids[i] = t[i].ID
 	}
 	return tu.RemoveTeamAPIKeyIDs(ids...)
+}
+
+// ClearSecrets clears all "secrets" edges to the Secret entity.
+func (tu *TeamUpdate) ClearSecrets() *TeamUpdate {
+	tu.mutation.ClearSecrets()
+	return tu
+}
+
+// RemoveSecretIDs removes the "secrets" edge to Secret entities by IDs.
+func (tu *TeamUpdate) RemoveSecretIDs(ids ...uuid.UUID) *TeamUpdate {
+	tu.mutation.RemoveSecretIDs(ids...)
+	return tu
+}
+
+// RemoveSecrets removes "secrets" edges to Secret entities.
+func (tu *TeamUpdate) RemoveSecrets(s ...*Secret) *TeamUpdate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return tu.RemoveSecretIDs(ids...)
 }
 
 // ClearTeamTier clears the "team_tier" edge to the Tier entity.
@@ -514,6 +551,54 @@ func (tu *TeamUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			},
 		}
 		edge.Schema = tu.schemaConfig.TeamAPIKey
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tu.mutation.SecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   team.SecretsTable,
+			Columns: []string{team.SecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = tu.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.RemovedSecretsIDs(); len(nodes) > 0 && !tu.mutation.SecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   team.SecretsTable,
+			Columns: []string{team.SecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = tu.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.SecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   team.SecretsTable,
+			Columns: []string{team.SecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = tu.schemaConfig.Secret
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -822,6 +907,21 @@ func (tuo *TeamUpdateOne) AddTeamAPIKeys(t ...*TeamAPIKey) *TeamUpdateOne {
 	return tuo.AddTeamAPIKeyIDs(ids...)
 }
 
+// AddSecretIDs adds the "secrets" edge to the Secret entity by IDs.
+func (tuo *TeamUpdateOne) AddSecretIDs(ids ...uuid.UUID) *TeamUpdateOne {
+	tuo.mutation.AddSecretIDs(ids...)
+	return tuo
+}
+
+// AddSecrets adds the "secrets" edges to the Secret entity.
+func (tuo *TeamUpdateOne) AddSecrets(s ...*Secret) *TeamUpdateOne {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return tuo.AddSecretIDs(ids...)
+}
+
 // SetTeamTierID sets the "team_tier" edge to the Tier entity by ID.
 func (tuo *TeamUpdateOne) SetTeamTierID(id string) *TeamUpdateOne {
 	tuo.mutation.SetTeamTierID(id)
@@ -908,6 +1008,27 @@ func (tuo *TeamUpdateOne) RemoveTeamAPIKeys(t ...*TeamAPIKey) *TeamUpdateOne {
 		ids[i] = t[i].ID
 	}
 	return tuo.RemoveTeamAPIKeyIDs(ids...)
+}
+
+// ClearSecrets clears all "secrets" edges to the Secret entity.
+func (tuo *TeamUpdateOne) ClearSecrets() *TeamUpdateOne {
+	tuo.mutation.ClearSecrets()
+	return tuo
+}
+
+// RemoveSecretIDs removes the "secrets" edge to Secret entities by IDs.
+func (tuo *TeamUpdateOne) RemoveSecretIDs(ids ...uuid.UUID) *TeamUpdateOne {
+	tuo.mutation.RemoveSecretIDs(ids...)
+	return tuo
+}
+
+// RemoveSecrets removes "secrets" edges to Secret entities.
+func (tuo *TeamUpdateOne) RemoveSecrets(s ...*Secret) *TeamUpdateOne {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return tuo.RemoveSecretIDs(ids...)
 }
 
 // ClearTeamTier clears the "team_tier" edge to the Tier entity.
@@ -1179,6 +1300,54 @@ func (tuo *TeamUpdateOne) sqlSave(ctx context.Context) (_node *Team, err error) 
 			},
 		}
 		edge.Schema = tuo.schemaConfig.TeamAPIKey
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tuo.mutation.SecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   team.SecretsTable,
+			Columns: []string{team.SecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = tuo.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.RemovedSecretsIDs(); len(nodes) > 0 && !tuo.mutation.SecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   team.SecretsTable,
+			Columns: []string{team.SecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = tuo.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.SecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   team.SecretsTable,
+			Columns: []string{team.SecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = tuo.schemaConfig.Secret
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}

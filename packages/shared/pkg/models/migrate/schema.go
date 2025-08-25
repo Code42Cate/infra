@@ -138,6 +138,30 @@ var (
 			},
 		},
 	}
+	// SecretsColumns holds the columns for the "secrets" table.
+	SecretsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true, Default: "gen_random_uuid()"},
+		{Name: "created_at", Type: field.TypeTime, Default: "CURRENT_TIMESTAMP"},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
+		{Name: "label", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "description", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "allowlist", Type: field.TypeOther, SchemaType: map[string]string{"postgres": "text[]"}},
+		{Name: "team_id", Type: field.TypeUUID},
+	}
+	// SecretsTable holds the schema information for the "secrets" table.
+	SecretsTable = &schema.Table{
+		Name:       "secrets",
+		Columns:    SecretsColumns,
+		PrimaryKey: []*schema.Column{SecretsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "secrets_teams_secrets",
+				Columns:    []*schema.Column{SecretsColumns[6]},
+				RefColumns: []*schema.Column{TeamsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// SnapshotsColumns holds the columns for the "snapshots" table.
 	SnapshotsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true, Default: "gen_random_uuid()"},
@@ -294,6 +318,7 @@ var (
 		EnvsTable,
 		EnvAliasesTable,
 		EnvBuildsTable,
+		SecretsTable,
 		SnapshotsTable,
 		TeamsTable,
 		TeamAPIKeysTable,
@@ -316,6 +341,8 @@ func init() {
 	}
 	EnvBuildsTable.ForeignKeys[0].RefTable = EnvsTable
 	EnvBuildsTable.Annotation = &entsql.Annotation{}
+	SecretsTable.ForeignKeys[0].RefTable = TeamsTable
+	SecretsTable.Annotation = &entsql.Annotation{}
 	SnapshotsTable.ForeignKeys[0].RefTable = EnvsTable
 	SnapshotsTable.Annotation = &entsql.Annotation{}
 	TeamsTable.ForeignKeys[0].RefTable = TiersTable

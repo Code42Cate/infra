@@ -21,6 +21,9 @@ type EnvAlias func(*sql.Selector)
 // EnvBuild is the predicate function for envbuild builders.
 type EnvBuild func(*sql.Selector)
 
+// Secret is the predicate function for secret builders.
+type Secret func(*sql.Selector)
+
 // Snapshot is the predicate function for snapshot builders.
 type Snapshot func(*sql.Selector)
 

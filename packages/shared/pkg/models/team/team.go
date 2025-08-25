@@ -34,6 +34,8 @@ const (
 	EdgeUsers = "users"
 	// EdgeTeamAPIKeys holds the string denoting the team_api_keys edge name in mutations.
 	EdgeTeamAPIKeys = "team_api_keys"
+	// EdgeSecrets holds the string denoting the secrets edge name in mutations.
+	EdgeSecrets = "secrets"
 	// EdgeTeamTier holds the string denoting the team_tier edge name in mutations.
 	EdgeTeamTier = "team_tier"
 	// EdgeEnvs holds the string denoting the envs edge name in mutations.
@@ -54,6 +56,13 @@ const (
 	TeamAPIKeysInverseTable = "team_api_keys"
 	// TeamAPIKeysColumn is the table column denoting the team_api_keys relation/edge.
 	TeamAPIKeysColumn = "team_id"
+	// SecretsTable is the table that holds the secrets relation/edge.
+	SecretsTable = "secrets"
+	// SecretsInverseTable is the table name for the Secret entity.
+	// It exists in this package in order to avoid circular dependency with the "secret" package.
+	SecretsInverseTable = "secrets"
+	// SecretsColumn is the table column denoting the secrets relation/edge.
+	SecretsColumn = "team_id"
 	// TeamTierTable is the table that holds the team_tier relation/edge.
 	TeamTierTable = "teams"
 	// TeamTierInverseTable is the table name for the Tier entity.
@@ -189,6 +198,20 @@ func ByTeamAPIKeys(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// BySecretsCount orders the results by secrets count.
+func BySecretsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSecretsStep(), opts...)
+	}
+}
+
+// BySecrets orders the results by secrets terms.
+func BySecrets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSecretsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByTeamTierField orders the results by team_tier field.
 func ByTeamTierField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -235,6 +258,13 @@ func newTeamAPIKeysStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TeamAPIKeysInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, TeamAPIKeysTable, TeamAPIKeysColumn),
+	)
+}
+func newSecretsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SecretsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, SecretsTable, SecretsColumn),
 	)
 }
 func newTeamTierStep() *sqlgraph.Step {

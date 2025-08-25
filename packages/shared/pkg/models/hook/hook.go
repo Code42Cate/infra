@@ -69,6 +69,18 @@ func (f EnvBuildFunc) Mutate(ctx context.Context, m models.Mutation) (models.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *models.EnvBuildMutation", m)
 }
 
+// The SecretFunc type is an adapter to allow the use of ordinary
+// function as Secret mutator.
+type SecretFunc func(context.Context, *models.SecretMutation) (models.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SecretFunc) Mutate(ctx context.Context, m models.Mutation) (models.Value, error) {
+	if mv, ok := m.(*models.SecretMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *models.SecretMutation", m)
+}
+
 // The SnapshotFunc type is an adapter to allow the use of ordinary
 // function as Snapshot mutator.
 type SnapshotFunc func(context.Context, *models.SnapshotMutation) (models.Value, error)

@@ -22,6 +22,8 @@ type Tx struct {
 	EnvAlias *EnvAliasClient
 	// EnvBuild is the client for interacting with the EnvBuild builders.
 	EnvBuild *EnvBuildClient
+	// Secret is the client for interacting with the Secret builders.
+	Secret *SecretClient
 	// Snapshot is the client for interacting with the Snapshot builders.
 	Snapshot *SnapshotClient
 	// Team is the client for interacting with the Team builders.
@@ -170,6 +172,7 @@ func (tx *Tx) init() {
 	tx.Env = NewEnvClient(tx.config)
 	tx.EnvAlias = NewEnvAliasClient(tx.config)
 	tx.EnvBuild = NewEnvBuildClient(tx.config)
+	tx.Secret = NewSecretClient(tx.config)
 	tx.Snapshot = NewSnapshotClient(tx.config)
 	tx.Team = NewTeamClient(tx.config)
 	tx.TeamAPIKey = NewTeamAPIKeyClient(tx.config)

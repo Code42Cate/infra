@@ -21,6 +21,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/env"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/envalias"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/envbuild"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/snapshot"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
@@ -46,6 +47,8 @@ type Client struct {
 	EnvAlias *EnvAliasClient
 	// EnvBuild is the client for interacting with the EnvBuild builders.
 	EnvBuild *EnvBuildClient
+	// Secret is the client for interacting with the Secret builders.
+	Secret *SecretClient
 	// Snapshot is the client for interacting with the Snapshot builders.
 	Snapshot *SnapshotClient
 	// Team is the client for interacting with the Team builders.
@@ -74,6 +77,7 @@ func (c *Client) init() {
 	c.Env = NewEnvClient(c.config)
 	c.EnvAlias = NewEnvAliasClient(c.config)
 	c.EnvBuild = NewEnvBuildClient(c.config)
+	c.Secret = NewSecretClient(c.config)
 	c.Snapshot = NewSnapshotClient(c.config)
 	c.Team = NewTeamClient(c.config)
 	c.TeamAPIKey = NewTeamAPIKeyClient(c.config)
@@ -180,6 +184,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Env:         NewEnvClient(cfg),
 		EnvAlias:    NewEnvAliasClient(cfg),
 		EnvBuild:    NewEnvBuildClient(cfg),
+		Secret:      NewSecretClient(cfg),
 		Snapshot:    NewSnapshotClient(cfg),
 		Team:        NewTeamClient(cfg),
 		TeamAPIKey:  NewTeamAPIKeyClient(cfg),
@@ -210,6 +215,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Env:         NewEnvClient(cfg),
 		EnvAlias:    NewEnvAliasClient(cfg),
 		EnvBuild:    NewEnvBuildClient(cfg),
+		Secret:      NewSecretClient(cfg),
 		Snapshot:    NewSnapshotClient(cfg),
 		Team:        NewTeamClient(cfg),
 		TeamAPIKey:  NewTeamAPIKeyClient(cfg),
@@ -245,8 +251,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.AccessToken, c.Cluster, c.Env, c.EnvAlias, c.EnvBuild, c.Snapshot, c.Team,
-		c.TeamAPIKey, c.Tier, c.User, c.UsersTeams,
+		c.AccessToken, c.Cluster, c.Env, c.EnvAlias, c.EnvBuild, c.Secret, c.Snapshot,
+		c.Team, c.TeamAPIKey, c.Tier, c.User, c.UsersTeams,
 	} {
 		n.Use(hooks...)
 	}
@@ -256,8 +262,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.AccessToken, c.Cluster, c.Env, c.EnvAlias, c.EnvBuild, c.Snapshot, c.Team,
-		c.TeamAPIKey, c.Tier, c.User, c.UsersTeams,
+		c.AccessToken, c.Cluster, c.Env, c.EnvAlias, c.EnvBuild, c.Secret, c.Snapshot,
+		c.Team, c.TeamAPIKey, c.Tier, c.User, c.UsersTeams,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -276,6 +282,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.EnvAlias.mutate(ctx, m)
 	case *EnvBuildMutation:
 		return c.EnvBuild.mutate(ctx, m)
+	case *SecretMutation:
+		return c.Secret.mutate(ctx, m)
 	case *SnapshotMutation:
 		return c.Snapshot.mutate(ctx, m)
 	case *TeamMutation:
@@ -1110,6 +1118,158 @@ func (c *EnvBuildClient) mutate(ctx context.Context, m *EnvBuildMutation) (Value
 	}
 }
 
+// SecretClient is a client for the Secret schema.
+type SecretClient struct {
+	config
+}
+
+// NewSecretClient returns a client for the Secret from the given config.
+func NewSecretClient(c config) *SecretClient {
+	return &SecretClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `secret.Hooks(f(g(h())))`.
+func (c *SecretClient) Use(hooks ...Hook) {
+	c.hooks.Secret = append(c.hooks.Secret, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `secret.Intercept(f(g(h())))`.
+func (c *SecretClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Secret = append(c.inters.Secret, interceptors...)
+}
+
+// Create returns a builder for creating a Secret entity.
+func (c *SecretClient) Create() *SecretCreate {
+	mutation := newSecretMutation(c.config, OpCreate)
+	return &SecretCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Secret entities.
+func (c *SecretClient) CreateBulk(builders ...*SecretCreate) *SecretCreateBulk {
+	return &SecretCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SecretClient) MapCreateBulk(slice any, setFunc func(*SecretCreate, int)) *SecretCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SecretCreateBulk{err: fmt.Errorf("calling to SecretClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SecretCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SecretCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Secret.
+func (c *SecretClient) Update() *SecretUpdate {
+	mutation := newSecretMutation(c.config, OpUpdate)
+	return &SecretUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SecretClient) UpdateOne(s *Secret) *SecretUpdateOne {
+	mutation := newSecretMutation(c.config, OpUpdateOne, withSecret(s))
+	return &SecretUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SecretClient) UpdateOneID(id uuid.UUID) *SecretUpdateOne {
+	mutation := newSecretMutation(c.config, OpUpdateOne, withSecretID(id))
+	return &SecretUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Secret.
+func (c *SecretClient) Delete() *SecretDelete {
+	mutation := newSecretMutation(c.config, OpDelete)
+	return &SecretDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SecretClient) DeleteOne(s *Secret) *SecretDeleteOne {
+	return c.DeleteOneID(s.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SecretClient) DeleteOneID(id uuid.UUID) *SecretDeleteOne {
+	builder := c.Delete().Where(secret.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SecretDeleteOne{builder}
+}
+
+// Query returns a query builder for Secret.
+func (c *SecretClient) Query() *SecretQuery {
+	return &SecretQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSecret},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Secret entity by its id.
+func (c *SecretClient) Get(ctx context.Context, id uuid.UUID) (*Secret, error) {
+	return c.Query().Where(secret.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SecretClient) GetX(ctx context.Context, id uuid.UUID) *Secret {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTeam queries the team edge of a Secret.
+func (c *SecretClient) QueryTeam(s *Secret) *TeamQuery {
+	query := (&TeamClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(secret.Table, secret.FieldID, id),
+			sqlgraph.To(team.Table, team.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, secret.TeamTable, secret.TeamColumn),
+		)
+		schemaConfig := s.schemaConfig
+		step.To.Schema = schemaConfig.Team
+		step.Edge.Schema = schemaConfig.Secret
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SecretClient) Hooks() []Hook {
+	return c.hooks.Secret
+}
+
+// Interceptors returns the client interceptors.
+func (c *SecretClient) Interceptors() []Interceptor {
+	return c.inters.Secret
+}
+
+func (c *SecretClient) mutate(ctx context.Context, m *SecretMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SecretCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SecretUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SecretUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SecretDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("models: unknown Secret mutation op: %q", m.Op())
+	}
+}
+
 // SnapshotClient is a client for the Snapshot schema.
 type SnapshotClient struct {
 	config
@@ -1402,6 +1562,25 @@ func (c *TeamClient) QueryTeamAPIKeys(t *Team) *TeamAPIKeyQuery {
 		schemaConfig := t.schemaConfig
 		step.To.Schema = schemaConfig.TeamAPIKey
 		step.Edge.Schema = schemaConfig.TeamAPIKey
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySecrets queries the secrets edge of a Team.
+func (c *TeamClient) QuerySecrets(t *Team) *SecretQuery {
+	query := (&SecretClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(team.Table, team.FieldID, id),
+			sqlgraph.To(secret.Table, secret.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, team.SecretsTable, team.SecretsColumn),
+		)
+		schemaConfig := t.schemaConfig
+		step.To.Schema = schemaConfig.Secret
+		step.Edge.Schema = schemaConfig.Secret
 		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
 		return fromV, nil
 	}
@@ -2215,12 +2394,12 @@ func (c *UsersTeamsClient) mutate(ctx context.Context, m *UsersTeamsMutation) (V
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AccessToken, Cluster, Env, EnvAlias, EnvBuild, Snapshot, Team, TeamAPIKey, Tier,
-		User, UsersTeams []ent.Hook
+		AccessToken, Cluster, Env, EnvAlias, EnvBuild, Secret, Snapshot, Team,
+		TeamAPIKey, Tier, User, UsersTeams []ent.Hook
 	}
 	inters struct {
-		AccessToken, Cluster, Env, EnvAlias, EnvBuild, Snapshot, Team, TeamAPIKey, Tier,
-		User, UsersTeams []ent.Interceptor
+		AccessToken, Cluster, Env, EnvAlias, EnvBuild, Secret, Snapshot, Team,
+		TeamAPIKey, Tier, User, UsersTeams []ent.Interceptor
 	}
 )
 
@@ -2232,6 +2411,7 @@ var (
 		Env:         tableSchemas[1],
 		EnvAlias:    tableSchemas[1],
 		EnvBuild:    tableSchemas[1],
+		Secret:      tableSchemas[1],
 		Snapshot:    tableSchemas[1],
 		Team:        tableSchemas[1],
 		TeamAPIKey:  tableSchemas[1],

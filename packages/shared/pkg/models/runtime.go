@@ -10,6 +10,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/env"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/envalias"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/envbuild"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/snapshot"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
@@ -80,6 +81,16 @@ func init() {
 	envbuildDescKernelVersion := envbuildFields[13].Descriptor()
 	// envbuild.DefaultKernelVersion holds the default value on creation for the kernel_version field.
 	envbuild.DefaultKernelVersion = envbuildDescKernelVersion.Default.(string)
+	secretFields := schema.Secret{}.Fields()
+	_ = secretFields
+	// secretDescCreatedAt is the schema descriptor for created_at field.
+	secretDescCreatedAt := secretFields[1].Descriptor()
+	// secret.DefaultCreatedAt holds the default value on creation for the created_at field.
+	secret.DefaultCreatedAt = secretDescCreatedAt.Default.(func() time.Time)
+	// secretDescDescription is the schema descriptor for description field.
+	secretDescDescription := secretFields[5].Descriptor()
+	// secret.DefaultDescription holds the default value on creation for the description field.
+	secret.DefaultDescription = secretDescDescription.Default.(string)
 	snapshotFields := schema.Snapshot{}.Fields()
 	_ = snapshotFields
 	// snapshotDescCreatedAt is the schema descriptor for created_at field.

@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/env"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/tier"
@@ -151,6 +152,21 @@ func (tc *TeamCreate) AddTeamAPIKeys(t ...*TeamAPIKey) *TeamCreate {
 		ids[i] = t[i].ID
 	}
 	return tc.AddTeamAPIKeyIDs(ids...)
+}
+
+// AddSecretIDs adds the "secrets" edge to the Secret entity by IDs.
+func (tc *TeamCreate) AddSecretIDs(ids ...uuid.UUID) *TeamCreate {
+	tc.mutation.AddSecretIDs(ids...)
+	return tc
+}
+
+// AddSecrets adds the "secrets" edges to the Secret entity.
+func (tc *TeamCreate) AddSecrets(s ...*Secret) *TeamCreate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return tc.AddSecretIDs(ids...)
 }
 
 // SetTeamTierID sets the "team_tier" edge to the Tier entity by ID.
@@ -355,6 +371,23 @@ func (tc *TeamCreate) createSpec() (*Team, *sqlgraph.CreateSpec) {
 			},
 		}
 		edge.Schema = tc.schemaConfig.TeamAPIKey
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := tc.mutation.SecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   team.SecretsTable,
+			Columns: []string{team.SecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = tc.schemaConfig.Secret
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
