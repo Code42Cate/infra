@@ -1245,6 +1245,44 @@ func (c *SecretClient) QueryTeam(s *Secret) *TeamQuery {
 	return query
 }
 
+// QueryCreatorUser queries the creator_user edge of a Secret.
+func (c *SecretClient) QueryCreatorUser(s *Secret) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(secret.Table, secret.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, secret.CreatorUserTable, secret.CreatorUserColumn),
+		)
+		schemaConfig := s.schemaConfig
+		step.To.Schema = schemaConfig.User
+		step.Edge.Schema = schemaConfig.Secret
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCreatorAPIKey queries the creator_api_key edge of a Secret.
+func (c *SecretClient) QueryCreatorAPIKey(s *Secret) *TeamAPIKeyQuery {
+	query := (&TeamAPIKeyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(secret.Table, secret.FieldID, id),
+			sqlgraph.To(teamapikey.Table, teamapikey.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, secret.CreatorAPIKeyTable, secret.CreatorAPIKeyColumn),
+		)
+		schemaConfig := s.schemaConfig
+		step.To.Schema = schemaConfig.TeamAPIKey
+		step.Edge.Schema = schemaConfig.Secret
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *SecretClient) Hooks() []Hook {
 	return c.hooks.Secret
@@ -1815,6 +1853,25 @@ func (c *TeamAPIKeyClient) QueryCreator(tak *TeamAPIKey) *UserQuery {
 	return query
 }
 
+// QueryCreatedSecrets queries the created_secrets edge of a TeamAPIKey.
+func (c *TeamAPIKeyClient) QueryCreatedSecrets(tak *TeamAPIKey) *SecretQuery {
+	query := (&SecretClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := tak.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(teamapikey.Table, teamapikey.FieldID, id),
+			sqlgraph.To(secret.Table, secret.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, teamapikey.CreatedSecretsTable, teamapikey.CreatedSecretsColumn),
+		)
+		schemaConfig := tak.schemaConfig
+		step.To.Schema = schemaConfig.Secret
+		step.Edge.Schema = schemaConfig.Secret
+		fromV = sqlgraph.Neighbors(tak.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *TeamAPIKeyClient) Hooks() []Hook {
 	return c.hooks.TeamAPIKey
@@ -2170,6 +2227,25 @@ func (c *UserClient) QueryCreatedAPIKeys(u *User) *TeamAPIKeyQuery {
 		schemaConfig := u.schemaConfig
 		step.To.Schema = schemaConfig.TeamAPIKey
 		step.Edge.Schema = schemaConfig.TeamAPIKey
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCreatedSecrets queries the created_secrets edge of a User.
+func (c *UserClient) QueryCreatedSecrets(u *User) *SecretQuery {
+	query := (&SecretClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(secret.Table, secret.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.CreatedSecretsTable, user.CreatedSecretsColumn),
+		)
+		schemaConfig := u.schemaConfig
+		step.To.Schema = schemaConfig.Secret
+		step.Edge.Schema = schemaConfig.Secret
 		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
 		return fromV, nil
 	}

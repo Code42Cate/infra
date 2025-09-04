@@ -45,6 +45,7 @@ func (TeamAPIKey) Edges() []ent.Edge {
 			Field("team_id"),
 		edge.From("creator", User.Type).Unique().
 			Ref("created_api_keys").Field("created_by"),
+		edge.To("created_secrets", Secret.Type).Annotations(entsql.OnDelete(entsql.SetNull)),
 	}
 }
 

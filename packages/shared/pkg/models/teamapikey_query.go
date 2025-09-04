@@ -4,6 +4,7 @@ package models
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -12,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/internal"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/predicate"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
@@ -21,13 +23,14 @@ import (
 // TeamAPIKeyQuery is the builder for querying TeamAPIKey entities.
 type TeamAPIKeyQuery struct {
 	config
-	ctx         *QueryContext
-	order       []teamapikey.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.TeamAPIKey
-	withTeam    *TeamQuery
-	withCreator *UserQuery
-	modifiers   []func(*sql.Selector)
+	ctx                *QueryContext
+	order              []teamapikey.OrderOption
+	inters             []Interceptor
+	predicates         []predicate.TeamAPIKey
+	withTeam           *TeamQuery
+	withCreator        *UserQuery
+	withCreatedSecrets *SecretQuery
+	modifiers          []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -108,6 +111,31 @@ func (takq *TeamAPIKeyQuery) QueryCreator() *UserQuery {
 		schemaConfig := takq.schemaConfig
 		step.To.Schema = schemaConfig.User
 		step.Edge.Schema = schemaConfig.TeamAPIKey
+		fromU = sqlgraph.SetNeighbors(takq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryCreatedSecrets chains the current query on the "created_secrets" edge.
+func (takq *TeamAPIKeyQuery) QueryCreatedSecrets() *SecretQuery {
+	query := (&SecretClient{config: takq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := takq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := takq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(teamapikey.Table, teamapikey.FieldID, selector),
+			sqlgraph.To(secret.Table, secret.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, teamapikey.CreatedSecretsTable, teamapikey.CreatedSecretsColumn),
+		)
+		schemaConfig := takq.schemaConfig
+		step.To.Schema = schemaConfig.Secret
+		step.Edge.Schema = schemaConfig.Secret
 		fromU = sqlgraph.SetNeighbors(takq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -301,13 +329,14 @@ func (takq *TeamAPIKeyQuery) Clone() *TeamAPIKeyQuery {
 		return nil
 	}
 	return &TeamAPIKeyQuery{
-		config:      takq.config,
-		ctx:         takq.ctx.Clone(),
-		order:       append([]teamapikey.OrderOption{}, takq.order...),
-		inters:      append([]Interceptor{}, takq.inters...),
-		predicates:  append([]predicate.TeamAPIKey{}, takq.predicates...),
-		withTeam:    takq.withTeam.Clone(),
-		withCreator: takq.withCreator.Clone(),
+		config:             takq.config,
+		ctx:                takq.ctx.Clone(),
+		order:              append([]teamapikey.OrderOption{}, takq.order...),
+		inters:             append([]Interceptor{}, takq.inters...),
+		predicates:         append([]predicate.TeamAPIKey{}, takq.predicates...),
+		withTeam:           takq.withTeam.Clone(),
+		withCreator:        takq.withCreator.Clone(),
+		withCreatedSecrets: takq.withCreatedSecrets.Clone(),
 		// clone intermediate query.
 		sql:  takq.sql.Clone(),
 		path: takq.path,
@@ -333,6 +362,17 @@ func (takq *TeamAPIKeyQuery) WithCreator(opts ...func(*UserQuery)) *TeamAPIKeyQu
 		opt(query)
 	}
 	takq.withCreator = query
+	return takq
+}
+
+// WithCreatedSecrets tells the query-builder to eager-load the nodes that are connected to
+// the "created_secrets" edge. The optional arguments are used to configure the query builder of the edge.
+func (takq *TeamAPIKeyQuery) WithCreatedSecrets(opts ...func(*SecretQuery)) *TeamAPIKeyQuery {
+	query := (&SecretClient{config: takq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	takq.withCreatedSecrets = query
 	return takq
 }
 
@@ -414,9 +454,10 @@ func (takq *TeamAPIKeyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	var (
 		nodes       = []*TeamAPIKey{}
 		_spec       = takq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			takq.withTeam != nil,
 			takq.withCreator != nil,
+			takq.withCreatedSecrets != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -451,6 +492,13 @@ func (takq *TeamAPIKeyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	if query := takq.withCreator; query != nil {
 		if err := takq.loadCreator(ctx, query, nodes, nil,
 			func(n *TeamAPIKey, e *User) { n.Edges.Creator = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := takq.withCreatedSecrets; query != nil {
+		if err := takq.loadCreatedSecrets(ctx, query, nodes,
+			func(n *TeamAPIKey) { n.Edges.CreatedSecrets = []*Secret{} },
+			func(n *TeamAPIKey, e *Secret) { n.Edges.CreatedSecrets = append(n.Edges.CreatedSecrets, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -515,6 +563,39 @@ func (takq *TeamAPIKeyQuery) loadCreator(ctx context.Context, query *UserQuery, 
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (takq *TeamAPIKeyQuery) loadCreatedSecrets(ctx context.Context, query *SecretQuery, nodes []*TeamAPIKey, init func(*TeamAPIKey), assign func(*TeamAPIKey, *Secret)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*TeamAPIKey)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(secret.FieldCreatedByAPIKey)
+	}
+	query.Where(predicate.Secret(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(teamapikey.CreatedSecretsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CreatedByAPIKey
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "created_by_api_key" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "created_by_api_key" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

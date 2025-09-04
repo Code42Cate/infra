@@ -26,8 +26,16 @@ const (
 	FieldDescription = "description"
 	// FieldAllowlist holds the string denoting the allowlist field in the database.
 	FieldAllowlist = "allowlist"
+	// FieldCreatedByUser holds the string denoting the created_by_user field in the database.
+	FieldCreatedByUser = "created_by_user"
+	// FieldCreatedByAPIKey holds the string denoting the created_by_api_key field in the database.
+	FieldCreatedByAPIKey = "created_by_api_key"
 	// EdgeTeam holds the string denoting the team edge name in mutations.
 	EdgeTeam = "team"
+	// EdgeCreatorUser holds the string denoting the creator_user edge name in mutations.
+	EdgeCreatorUser = "creator_user"
+	// EdgeCreatorAPIKey holds the string denoting the creator_api_key edge name in mutations.
+	EdgeCreatorAPIKey = "creator_api_key"
 	// Table holds the table name of the secret in the database.
 	Table = "secrets"
 	// TeamTable is the table that holds the team relation/edge.
@@ -37,6 +45,20 @@ const (
 	TeamInverseTable = "teams"
 	// TeamColumn is the table column denoting the team relation/edge.
 	TeamColumn = "team_id"
+	// CreatorUserTable is the table that holds the creator_user relation/edge.
+	CreatorUserTable = "secrets"
+	// CreatorUserInverseTable is the table name for the User entity.
+	// It exists in this package in order to avoid circular dependency with the "user" package.
+	CreatorUserInverseTable = "users"
+	// CreatorUserColumn is the table column denoting the creator_user relation/edge.
+	CreatorUserColumn = "created_by_user"
+	// CreatorAPIKeyTable is the table that holds the creator_api_key relation/edge.
+	CreatorAPIKeyTable = "secrets"
+	// CreatorAPIKeyInverseTable is the table name for the TeamAPIKey entity.
+	// It exists in this package in order to avoid circular dependency with the "teamapikey" package.
+	CreatorAPIKeyInverseTable = "team_api_keys"
+	// CreatorAPIKeyColumn is the table column denoting the creator_api_key relation/edge.
+	CreatorAPIKeyColumn = "created_by_api_key"
 )
 
 // Columns holds all SQL columns for secret fields.
@@ -48,6 +70,8 @@ var Columns = []string{
 	FieldLabel,
 	FieldDescription,
 	FieldAllowlist,
+	FieldCreatedByUser,
+	FieldCreatedByAPIKey,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -105,10 +129,34 @@ func ByAllowlist(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAllowlist, opts...).ToFunc()
 }
 
+// ByCreatedByUser orders the results by the created_by_user field.
+func ByCreatedByUser(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedByUser, opts...).ToFunc()
+}
+
+// ByCreatedByAPIKey orders the results by the created_by_api_key field.
+func ByCreatedByAPIKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedByAPIKey, opts...).ToFunc()
+}
+
 // ByTeamField orders the results by team field.
 func ByTeamField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newTeamStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByCreatorUserField orders the results by creator_user field.
+func ByCreatorUserField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCreatorUserStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByCreatorAPIKeyField orders the results by creator_api_key field.
+func ByCreatorAPIKeyField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCreatorAPIKeyStep(), sql.OrderByField(field, opts...))
 	}
 }
 func newTeamStep() *sqlgraph.Step {
@@ -116,5 +164,19 @@ func newTeamStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TeamInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, TeamTable, TeamColumn),
+	)
+}
+func newCreatorUserStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CreatorUserInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, CreatorUserTable, CreatorUserColumn),
+	)
+}
+func newCreatorAPIKeyStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CreatorAPIKeyInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, CreatorAPIKeyTable, CreatorAPIKeyColumn),
 	)
 }

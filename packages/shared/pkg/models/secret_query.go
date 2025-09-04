@@ -14,18 +14,22 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/predicate"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
 	"github.com/google/uuid"
 )
 
 // SecretQuery is the builder for querying Secret entities.
 type SecretQuery struct {
 	config
-	ctx        *QueryContext
-	order      []secret.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Secret
-	withTeam   *TeamQuery
-	modifiers  []func(*sql.Selector)
+	ctx               *QueryContext
+	order             []secret.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.Secret
+	withTeam          *TeamQuery
+	withCreatorUser   *UserQuery
+	withCreatorAPIKey *TeamAPIKeyQuery
+	modifiers         []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -80,6 +84,56 @@ func (sq *SecretQuery) QueryTeam() *TeamQuery {
 		)
 		schemaConfig := sq.schemaConfig
 		step.To.Schema = schemaConfig.Team
+		step.Edge.Schema = schemaConfig.Secret
+		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryCreatorUser chains the current query on the "creator_user" edge.
+func (sq *SecretQuery) QueryCreatorUser() *UserQuery {
+	query := (&UserClient{config: sq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := sq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := sq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(secret.Table, secret.FieldID, selector),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, secret.CreatorUserTable, secret.CreatorUserColumn),
+		)
+		schemaConfig := sq.schemaConfig
+		step.To.Schema = schemaConfig.User
+		step.Edge.Schema = schemaConfig.Secret
+		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryCreatorAPIKey chains the current query on the "creator_api_key" edge.
+func (sq *SecretQuery) QueryCreatorAPIKey() *TeamAPIKeyQuery {
+	query := (&TeamAPIKeyClient{config: sq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := sq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := sq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(secret.Table, secret.FieldID, selector),
+			sqlgraph.To(teamapikey.Table, teamapikey.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, secret.CreatorAPIKeyTable, secret.CreatorAPIKeyColumn),
+		)
+		schemaConfig := sq.schemaConfig
+		step.To.Schema = schemaConfig.TeamAPIKey
 		step.Edge.Schema = schemaConfig.Secret
 		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
 		return fromU, nil
@@ -274,12 +328,14 @@ func (sq *SecretQuery) Clone() *SecretQuery {
 		return nil
 	}
 	return &SecretQuery{
-		config:     sq.config,
-		ctx:        sq.ctx.Clone(),
-		order:      append([]secret.OrderOption{}, sq.order...),
-		inters:     append([]Interceptor{}, sq.inters...),
-		predicates: append([]predicate.Secret{}, sq.predicates...),
-		withTeam:   sq.withTeam.Clone(),
+		config:            sq.config,
+		ctx:               sq.ctx.Clone(),
+		order:             append([]secret.OrderOption{}, sq.order...),
+		inters:            append([]Interceptor{}, sq.inters...),
+		predicates:        append([]predicate.Secret{}, sq.predicates...),
+		withTeam:          sq.withTeam.Clone(),
+		withCreatorUser:   sq.withCreatorUser.Clone(),
+		withCreatorAPIKey: sq.withCreatorAPIKey.Clone(),
 		// clone intermediate query.
 		sql:  sq.sql.Clone(),
 		path: sq.path,
@@ -294,6 +350,28 @@ func (sq *SecretQuery) WithTeam(opts ...func(*TeamQuery)) *SecretQuery {
 		opt(query)
 	}
 	sq.withTeam = query
+	return sq
+}
+
+// WithCreatorUser tells the query-builder to eager-load the nodes that are connected to
+// the "creator_user" edge. The optional arguments are used to configure the query builder of the edge.
+func (sq *SecretQuery) WithCreatorUser(opts ...func(*UserQuery)) *SecretQuery {
+	query := (&UserClient{config: sq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	sq.withCreatorUser = query
+	return sq
+}
+
+// WithCreatorAPIKey tells the query-builder to eager-load the nodes that are connected to
+// the "creator_api_key" edge. The optional arguments are used to configure the query builder of the edge.
+func (sq *SecretQuery) WithCreatorAPIKey(opts ...func(*TeamAPIKeyQuery)) *SecretQuery {
+	query := (&TeamAPIKeyClient{config: sq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	sq.withCreatorAPIKey = query
 	return sq
 }
 
@@ -375,8 +453,10 @@ func (sq *SecretQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Secre
 	var (
 		nodes       = []*Secret{}
 		_spec       = sq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [3]bool{
 			sq.withTeam != nil,
+			sq.withCreatorUser != nil,
+			sq.withCreatorAPIKey != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -408,6 +488,18 @@ func (sq *SecretQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Secre
 			return nil, err
 		}
 	}
+	if query := sq.withCreatorUser; query != nil {
+		if err := sq.loadCreatorUser(ctx, query, nodes, nil,
+			func(n *Secret, e *User) { n.Edges.CreatorUser = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := sq.withCreatorAPIKey; query != nil {
+		if err := sq.loadCreatorAPIKey(ctx, query, nodes, nil,
+			func(n *Secret, e *TeamAPIKey) { n.Edges.CreatorAPIKey = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
 }
 
@@ -433,6 +525,70 @@ func (sq *SecretQuery) loadTeam(ctx context.Context, query *TeamQuery, nodes []*
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "team_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (sq *SecretQuery) loadCreatorUser(ctx context.Context, query *UserQuery, nodes []*Secret, init func(*Secret), assign func(*Secret, *User)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Secret)
+	for i := range nodes {
+		if nodes[i].CreatedByUser == nil {
+			continue
+		}
+		fk := *nodes[i].CreatedByUser
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(user.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "created_by_user" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (sq *SecretQuery) loadCreatorAPIKey(ctx context.Context, query *TeamAPIKeyQuery, nodes []*Secret, init func(*Secret), assign func(*Secret, *TeamAPIKey)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Secret)
+	for i := range nodes {
+		if nodes[i].CreatedByAPIKey == nil {
+			continue
+		}
+		fk := *nodes[i].CreatedByAPIKey
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(teamapikey.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "created_by_api_key" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -473,6 +629,12 @@ func (sq *SecretQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if sq.withTeam != nil {
 			_spec.Node.AddColumnOnce(secret.FieldTeamID)
+		}
+		if sq.withCreatorUser != nil {
+			_spec.Node.AddColumnOnce(secret.FieldCreatedByUser)
+		}
+		if sq.withCreatorAPIKey != nil {
+			_spec.Node.AddColumnOnce(secret.FieldCreatedByAPIKey)
 		}
 	}
 	if ps := sq.predicates; len(ps) > 0 {

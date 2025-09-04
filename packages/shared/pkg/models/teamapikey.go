@@ -56,9 +56,11 @@ type TeamAPIKeyEdges struct {
 	Team *Team `json:"team,omitempty"`
 	// Creator holds the value of the creator edge.
 	Creator *User `json:"creator,omitempty"`
+	// CreatedSecrets holds the value of the created_secrets edge.
+	CreatedSecrets []*Secret `json:"created_secrets,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // TeamOrErr returns the Team value or an error if the edge
@@ -85,6 +87,15 @@ func (e TeamAPIKeyEdges) CreatorOrErr() (*User, error) {
 		return e.Creator, nil
 	}
 	return nil, &NotLoadedError{edge: "creator"}
+}
+
+// CreatedSecretsOrErr returns the CreatedSecrets value or an error if the edge
+// was not loaded in eager-loading.
+func (e TeamAPIKeyEdges) CreatedSecretsOrErr() ([]*Secret, error) {
+	if e.loadedTypes[2] {
+		return e.CreatedSecrets, nil
+	}
+	return nil, &NotLoadedError{edge: "created_secrets"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -219,6 +230,11 @@ func (tak *TeamAPIKey) QueryTeam() *TeamQuery {
 // QueryCreator queries the "creator" edge of the TeamAPIKey entity.
 func (tak *TeamAPIKey) QueryCreator() *UserQuery {
 	return NewTeamAPIKeyClient(tak.config).QueryCreator(tak)
+}
+
+// QueryCreatedSecrets queries the "created_secrets" edge of the TeamAPIKey entity.
+func (tak *TeamAPIKey) QueryCreatedSecrets() *SecretQuery {
+	return NewTeamAPIKeyClient(tak.config).QueryCreatedSecrets(tak)
 }
 
 // Update returns a builder for updating this TeamAPIKey.

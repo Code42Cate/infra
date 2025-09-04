@@ -11,6 +11,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
@@ -32,6 +34,10 @@ type Secret struct {
 	Description string `json:"description,omitempty"`
 	// Allowlist holds the value of the "allowlist" field.
 	Allowlist pq.StringArray `json:"allowlist,omitempty"`
+	// CreatedByUser holds the value of the "created_by_user" field.
+	CreatedByUser *uuid.UUID `json:"created_by_user,omitempty"`
+	// CreatedByAPIKey holds the value of the "created_by_api_key" field.
+	CreatedByAPIKey *uuid.UUID `json:"created_by_api_key,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SecretQuery when eager-loading is set.
 	Edges        SecretEdges `json:"edges"`
@@ -42,9 +48,13 @@ type Secret struct {
 type SecretEdges struct {
 	// Team holds the value of the team edge.
 	Team *Team `json:"team,omitempty"`
+	// CreatorUser holds the value of the creator_user edge.
+	CreatorUser *User `json:"creator_user,omitempty"`
+	// CreatorAPIKey holds the value of the creator_api_key edge.
+	CreatorAPIKey *TeamAPIKey `json:"creator_api_key,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [3]bool
 }
 
 // TeamOrErr returns the Team value or an error if the edge
@@ -60,11 +70,39 @@ func (e SecretEdges) TeamOrErr() (*Team, error) {
 	return nil, &NotLoadedError{edge: "team"}
 }
 
+// CreatorUserOrErr returns the CreatorUser value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e SecretEdges) CreatorUserOrErr() (*User, error) {
+	if e.loadedTypes[1] {
+		if e.CreatorUser == nil {
+			// Edge was loaded but was not found.
+			return nil, &NotFoundError{label: user.Label}
+		}
+		return e.CreatorUser, nil
+	}
+	return nil, &NotLoadedError{edge: "creator_user"}
+}
+
+// CreatorAPIKeyOrErr returns the CreatorAPIKey value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e SecretEdges) CreatorAPIKeyOrErr() (*TeamAPIKey, error) {
+	if e.loadedTypes[2] {
+		if e.CreatorAPIKey == nil {
+			// Edge was loaded but was not found.
+			return nil, &NotFoundError{label: teamapikey.Label}
+		}
+		return e.CreatorAPIKey, nil
+	}
+	return nil, &NotLoadedError{edge: "creator_api_key"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Secret) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case secret.FieldCreatedByUser, secret.FieldCreatedByAPIKey:
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case secret.FieldAllowlist:
 			values[i] = new(pq.StringArray)
 		case secret.FieldLabel, secret.FieldDescription:
@@ -131,6 +169,20 @@ func (s *Secret) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				s.Allowlist = *value
 			}
+		case secret.FieldCreatedByUser:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field created_by_user", values[i])
+			} else if value.Valid {
+				s.CreatedByUser = new(uuid.UUID)
+				*s.CreatedByUser = *value.S.(*uuid.UUID)
+			}
+		case secret.FieldCreatedByAPIKey:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field created_by_api_key", values[i])
+			} else if value.Valid {
+				s.CreatedByAPIKey = new(uuid.UUID)
+				*s.CreatedByAPIKey = *value.S.(*uuid.UUID)
+			}
 		default:
 			s.selectValues.Set(columns[i], values[i])
 		}
@@ -147,6 +199,16 @@ func (s *Secret) Value(name string) (ent.Value, error) {
 // QueryTeam queries the "team" edge of the Secret entity.
 func (s *Secret) QueryTeam() *TeamQuery {
 	return NewSecretClient(s.config).QueryTeam(s)
+}
+
+// QueryCreatorUser queries the "creator_user" edge of the Secret entity.
+func (s *Secret) QueryCreatorUser() *UserQuery {
+	return NewSecretClient(s.config).QueryCreatorUser(s)
+}
+
+// QueryCreatorAPIKey queries the "creator_api_key" edge of the Secret entity.
+func (s *Secret) QueryCreatorAPIKey() *TeamAPIKeyQuery {
+	return NewSecretClient(s.config).QueryCreatorAPIKey(s)
 }
 
 // Update returns a builder for updating this Secret.
@@ -191,6 +253,16 @@ func (s *Secret) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("allowlist=")
 	builder.WriteString(fmt.Sprintf("%v", s.Allowlist))
+	builder.WriteString(", ")
+	if v := s.CreatedByUser; v != nil {
+		builder.WriteString("created_by_user=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := s.CreatedByAPIKey; v != nil {
+		builder.WriteString("created_by_api_key=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

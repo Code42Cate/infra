@@ -795,6 +795,35 @@ func HasCreatorWith(preds ...predicate.User) predicate.TeamAPIKey {
 	})
 }
 
+// HasCreatedSecrets applies the HasEdge predicate on the "created_secrets" edge.
+func HasCreatedSecrets() predicate.TeamAPIKey {
+	return predicate.TeamAPIKey(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, CreatedSecretsTable, CreatedSecretsColumn),
+		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.Secret
+		step.Edge.Schema = schemaConfig.Secret
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCreatedSecretsWith applies the HasEdge predicate on the "created_secrets" edge with a given conditions (other predicates).
+func HasCreatedSecretsWith(preds ...predicate.Secret) predicate.TeamAPIKey {
+	return predicate.TeamAPIKey(func(s *sql.Selector) {
+		step := newCreatedSecretsStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.Secret
+		step.Edge.Schema = schemaConfig.Secret
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.TeamAPIKey) predicate.TeamAPIKey {
 	return predicate.TeamAPIKey(sql.AndPredicates(predicates...))

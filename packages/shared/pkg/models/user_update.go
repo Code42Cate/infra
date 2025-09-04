@@ -14,6 +14,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/env"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/internal"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/predicate"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
@@ -107,6 +108,21 @@ func (uu *UserUpdate) AddCreatedAPIKeys(t ...*TeamAPIKey) *UserUpdate {
 		ids[i] = t[i].ID
 	}
 	return uu.AddCreatedAPIKeyIDs(ids...)
+}
+
+// AddCreatedSecretIDs adds the "created_secrets" edge to the Secret entity by IDs.
+func (uu *UserUpdate) AddCreatedSecretIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.AddCreatedSecretIDs(ids...)
+	return uu
+}
+
+// AddCreatedSecrets adds the "created_secrets" edges to the Secret entity.
+func (uu *UserUpdate) AddCreatedSecrets(s ...*Secret) *UserUpdate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uu.AddCreatedSecretIDs(ids...)
 }
 
 // AddUsersTeamIDs adds the "users_teams" edge to the UsersTeams entity by IDs.
@@ -211,6 +227,27 @@ func (uu *UserUpdate) RemoveCreatedAPIKeys(t ...*TeamAPIKey) *UserUpdate {
 		ids[i] = t[i].ID
 	}
 	return uu.RemoveCreatedAPIKeyIDs(ids...)
+}
+
+// ClearCreatedSecrets clears all "created_secrets" edges to the Secret entity.
+func (uu *UserUpdate) ClearCreatedSecrets() *UserUpdate {
+	uu.mutation.ClearCreatedSecrets()
+	return uu
+}
+
+// RemoveCreatedSecretIDs removes the "created_secrets" edge to Secret entities by IDs.
+func (uu *UserUpdate) RemoveCreatedSecretIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.RemoveCreatedSecretIDs(ids...)
+	return uu
+}
+
+// RemoveCreatedSecrets removes "created_secrets" edges to Secret entities.
+func (uu *UserUpdate) RemoveCreatedSecrets(s ...*Secret) *UserUpdate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uu.RemoveCreatedSecretIDs(ids...)
 }
 
 // ClearUsersTeams clears all "users_teams" edges to the UsersTeams entity.
@@ -496,6 +533,54 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if uu.mutation.CreatedSecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedSecretsTable,
+			Columns: []string{user.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = uu.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedCreatedSecretsIDs(); len(nodes) > 0 && !uu.mutation.CreatedSecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedSecretsTable,
+			Columns: []string{user.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = uu.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.CreatedSecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedSecretsTable,
+			Columns: []string{user.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = uu.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if uu.mutation.UsersTeamsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -642,6 +727,21 @@ func (uuo *UserUpdateOne) AddCreatedAPIKeys(t ...*TeamAPIKey) *UserUpdateOne {
 	return uuo.AddCreatedAPIKeyIDs(ids...)
 }
 
+// AddCreatedSecretIDs adds the "created_secrets" edge to the Secret entity by IDs.
+func (uuo *UserUpdateOne) AddCreatedSecretIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.AddCreatedSecretIDs(ids...)
+	return uuo
+}
+
+// AddCreatedSecrets adds the "created_secrets" edges to the Secret entity.
+func (uuo *UserUpdateOne) AddCreatedSecrets(s ...*Secret) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uuo.AddCreatedSecretIDs(ids...)
+}
+
 // AddUsersTeamIDs adds the "users_teams" edge to the UsersTeams entity by IDs.
 func (uuo *UserUpdateOne) AddUsersTeamIDs(ids ...int) *UserUpdateOne {
 	uuo.mutation.AddUsersTeamIDs(ids...)
@@ -744,6 +844,27 @@ func (uuo *UserUpdateOne) RemoveCreatedAPIKeys(t ...*TeamAPIKey) *UserUpdateOne 
 		ids[i] = t[i].ID
 	}
 	return uuo.RemoveCreatedAPIKeyIDs(ids...)
+}
+
+// ClearCreatedSecrets clears all "created_secrets" edges to the Secret entity.
+func (uuo *UserUpdateOne) ClearCreatedSecrets() *UserUpdateOne {
+	uuo.mutation.ClearCreatedSecrets()
+	return uuo
+}
+
+// RemoveCreatedSecretIDs removes the "created_secrets" edge to Secret entities by IDs.
+func (uuo *UserUpdateOne) RemoveCreatedSecretIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.RemoveCreatedSecretIDs(ids...)
+	return uuo
+}
+
+// RemoveCreatedSecrets removes "created_secrets" edges to Secret entities.
+func (uuo *UserUpdateOne) RemoveCreatedSecrets(s ...*Secret) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uuo.RemoveCreatedSecretIDs(ids...)
 }
 
 // ClearUsersTeams clears all "users_teams" edges to the UsersTeams entity.
@@ -1054,6 +1175,54 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			},
 		}
 		edge.Schema = uuo.schemaConfig.TeamAPIKey
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.CreatedSecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedSecretsTable,
+			Columns: []string{user.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = uuo.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedCreatedSecretsIDs(); len(nodes) > 0 && !uuo.mutation.CreatedSecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedSecretsTable,
+			Columns: []string{user.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = uuo.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.CreatedSecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedSecretsTable,
+			Columns: []string{user.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = uuo.schemaConfig.Secret
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}

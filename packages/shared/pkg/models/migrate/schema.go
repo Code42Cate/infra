@@ -147,6 +147,8 @@ var (
 		{Name: "description", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "allowlist", Type: field.TypeOther, SchemaType: map[string]string{"postgres": "text[]"}},
 		{Name: "team_id", Type: field.TypeUUID},
+		{Name: "created_by_api_key", Type: field.TypeUUID, Nullable: true},
+		{Name: "created_by_user", Type: field.TypeUUID, Nullable: true},
 	}
 	// SecretsTable holds the schema information for the "secrets" table.
 	SecretsTable = &schema.Table{
@@ -159,6 +161,18 @@ var (
 				Columns:    []*schema.Column{SecretsColumns[6]},
 				RefColumns: []*schema.Column{TeamsColumns[0]},
 				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "secrets_team_api_keys_created_secrets",
+				Columns:    []*schema.Column{SecretsColumns[7]},
+				RefColumns: []*schema.Column{TeamAPIKeysColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "secrets_users_created_secrets",
+				Columns:    []*schema.Column{SecretsColumns[8]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
 			},
 		},
 	}
@@ -342,6 +356,8 @@ func init() {
 	EnvBuildsTable.ForeignKeys[0].RefTable = EnvsTable
 	EnvBuildsTable.Annotation = &entsql.Annotation{}
 	SecretsTable.ForeignKeys[0].RefTable = TeamsTable
+	SecretsTable.ForeignKeys[1].RefTable = TeamAPIKeysTable
+	SecretsTable.ForeignKeys[2].RefTable = UsersTable
 	SecretsTable.Annotation = &entsql.Annotation{}
 	SnapshotsTable.ForeignKeys[0].RefTable = EnvsTable
 	SnapshotsTable.Annotation = &entsql.Annotation{}

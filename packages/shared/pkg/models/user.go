@@ -35,11 +35,13 @@ type UserEdges struct {
 	AccessTokens []*AccessToken `json:"access_tokens,omitempty"`
 	// CreatedAPIKeys holds the value of the created_api_keys edge.
 	CreatedAPIKeys []*TeamAPIKey `json:"created_api_keys,omitempty"`
+	// CreatedSecrets holds the value of the created_secrets edge.
+	CreatedSecrets []*Secret `json:"created_secrets,omitempty"`
 	// UsersTeams holds the value of the users_teams edge.
 	UsersTeams []*UsersTeams `json:"users_teams,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [5]bool
+	loadedTypes [6]bool
 }
 
 // TeamsOrErr returns the Teams value or an error if the edge
@@ -78,10 +80,19 @@ func (e UserEdges) CreatedAPIKeysOrErr() ([]*TeamAPIKey, error) {
 	return nil, &NotLoadedError{edge: "created_api_keys"}
 }
 
+// CreatedSecretsOrErr returns the CreatedSecrets value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) CreatedSecretsOrErr() ([]*Secret, error) {
+	if e.loadedTypes[4] {
+		return e.CreatedSecrets, nil
+	}
+	return nil, &NotLoadedError{edge: "created_secrets"}
+}
+
 // UsersTeamsOrErr returns the UsersTeams value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UsersTeamsOrErr() ([]*UsersTeams, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.UsersTeams, nil
 	}
 	return nil, &NotLoadedError{edge: "users_teams"}
@@ -154,6 +165,11 @@ func (u *User) QueryAccessTokens() *AccessTokenQuery {
 // QueryCreatedAPIKeys queries the "created_api_keys" edge of the User entity.
 func (u *User) QueryCreatedAPIKeys() *TeamAPIKeyQuery {
 	return NewUserClient(u.config).QueryCreatedAPIKeys(u)
+}
+
+// QueryCreatedSecrets queries the "created_secrets" edge of the User entity.
+func (u *User) QueryCreatedSecrets() *SecretQuery {
+	return NewUserClient(u.config).QueryCreatedSecrets(u)
 }
 
 // QueryUsersTeams queries the "users_teams" edge of the User entity.

@@ -33,5 +33,6 @@ func (User) Edges() []ent.Edge {
 		edge.To("created_envs", Env.Type).Annotations(entsql.OnDelete(entsql.SetNull)),
 		edge.To("access_tokens", AccessToken.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("created_api_keys", TeamAPIKey.Type).Annotations(entsql.OnDelete(entsql.SetNull)),
+		edge.To("created_secrets", Secret.Type).Annotations(entsql.OnDelete(entsql.SetNull)),
 	}
 }

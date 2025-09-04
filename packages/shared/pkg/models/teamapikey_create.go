@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
@@ -166,6 +167,21 @@ func (takc *TeamAPIKeyCreate) SetNillableCreatorID(id *uuid.UUID) *TeamAPIKeyCre
 // SetCreator sets the "creator" edge to the User entity.
 func (takc *TeamAPIKeyCreate) SetCreator(u *User) *TeamAPIKeyCreate {
 	return takc.SetCreatorID(u.ID)
+}
+
+// AddCreatedSecretIDs adds the "created_secrets" edge to the Secret entity by IDs.
+func (takc *TeamAPIKeyCreate) AddCreatedSecretIDs(ids ...uuid.UUID) *TeamAPIKeyCreate {
+	takc.mutation.AddCreatedSecretIDs(ids...)
+	return takc
+}
+
+// AddCreatedSecrets adds the "created_secrets" edges to the Secret entity.
+func (takc *TeamAPIKeyCreate) AddCreatedSecrets(s ...*Secret) *TeamAPIKeyCreate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return takc.AddCreatedSecretIDs(ids...)
 }
 
 // Mutation returns the TeamAPIKeyMutation object of the builder.
@@ -356,6 +372,23 @@ func (takc *TeamAPIKeyCreate) createSpec() (*TeamAPIKey, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.CreatedBy = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := takc.mutation.CreatedSecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   teamapikey.CreatedSecretsTable,
+			Columns: []string{teamapikey.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = takc.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

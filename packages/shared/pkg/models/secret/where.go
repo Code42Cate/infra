@@ -83,6 +83,16 @@ func Allowlist(v pq.StringArray) predicate.Secret {
 	return predicate.Secret(sql.FieldEQ(FieldAllowlist, v))
 }
 
+// CreatedByUser applies equality check predicate on the "created_by_user" field. It's identical to CreatedByUserEQ.
+func CreatedByUser(v uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldCreatedByUser, v))
+}
+
+// CreatedByAPIKey applies equality check predicate on the "created_by_api_key" field. It's identical to CreatedByAPIKeyEQ.
+func CreatedByAPIKey(v uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldCreatedByAPIKey, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Secret {
 	return predicate.Secret(sql.FieldEQ(FieldCreatedAt, v))
@@ -363,6 +373,66 @@ func AllowlistLTE(v pq.StringArray) predicate.Secret {
 	return predicate.Secret(sql.FieldLTE(FieldAllowlist, v))
 }
 
+// CreatedByUserEQ applies the EQ predicate on the "created_by_user" field.
+func CreatedByUserEQ(v uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldCreatedByUser, v))
+}
+
+// CreatedByUserNEQ applies the NEQ predicate on the "created_by_user" field.
+func CreatedByUserNEQ(v uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldNEQ(FieldCreatedByUser, v))
+}
+
+// CreatedByUserIn applies the In predicate on the "created_by_user" field.
+func CreatedByUserIn(vs ...uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldIn(FieldCreatedByUser, vs...))
+}
+
+// CreatedByUserNotIn applies the NotIn predicate on the "created_by_user" field.
+func CreatedByUserNotIn(vs ...uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldNotIn(FieldCreatedByUser, vs...))
+}
+
+// CreatedByUserIsNil applies the IsNil predicate on the "created_by_user" field.
+func CreatedByUserIsNil() predicate.Secret {
+	return predicate.Secret(sql.FieldIsNull(FieldCreatedByUser))
+}
+
+// CreatedByUserNotNil applies the NotNil predicate on the "created_by_user" field.
+func CreatedByUserNotNil() predicate.Secret {
+	return predicate.Secret(sql.FieldNotNull(FieldCreatedByUser))
+}
+
+// CreatedByAPIKeyEQ applies the EQ predicate on the "created_by_api_key" field.
+func CreatedByAPIKeyEQ(v uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldEQ(FieldCreatedByAPIKey, v))
+}
+
+// CreatedByAPIKeyNEQ applies the NEQ predicate on the "created_by_api_key" field.
+func CreatedByAPIKeyNEQ(v uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldNEQ(FieldCreatedByAPIKey, v))
+}
+
+// CreatedByAPIKeyIn applies the In predicate on the "created_by_api_key" field.
+func CreatedByAPIKeyIn(vs ...uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldIn(FieldCreatedByAPIKey, vs...))
+}
+
+// CreatedByAPIKeyNotIn applies the NotIn predicate on the "created_by_api_key" field.
+func CreatedByAPIKeyNotIn(vs ...uuid.UUID) predicate.Secret {
+	return predicate.Secret(sql.FieldNotIn(FieldCreatedByAPIKey, vs...))
+}
+
+// CreatedByAPIKeyIsNil applies the IsNil predicate on the "created_by_api_key" field.
+func CreatedByAPIKeyIsNil() predicate.Secret {
+	return predicate.Secret(sql.FieldIsNull(FieldCreatedByAPIKey))
+}
+
+// CreatedByAPIKeyNotNil applies the NotNil predicate on the "created_by_api_key" field.
+func CreatedByAPIKeyNotNil() predicate.Secret {
+	return predicate.Secret(sql.FieldNotNull(FieldCreatedByAPIKey))
+}
+
 // HasTeam applies the HasEdge predicate on the "team" edge.
 func HasTeam() predicate.Secret {
 	return predicate.Secret(func(s *sql.Selector) {
@@ -383,6 +453,64 @@ func HasTeamWith(preds ...predicate.Team) predicate.Secret {
 		step := newTeamStep()
 		schemaConfig := internal.SchemaConfigFromContext(s.Context())
 		step.To.Schema = schemaConfig.Team
+		step.Edge.Schema = schemaConfig.Secret
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasCreatorUser applies the HasEdge predicate on the "creator_user" edge.
+func HasCreatorUser() predicate.Secret {
+	return predicate.Secret(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, CreatorUserTable, CreatorUserColumn),
+		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.User
+		step.Edge.Schema = schemaConfig.Secret
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCreatorUserWith applies the HasEdge predicate on the "creator_user" edge with a given conditions (other predicates).
+func HasCreatorUserWith(preds ...predicate.User) predicate.Secret {
+	return predicate.Secret(func(s *sql.Selector) {
+		step := newCreatorUserStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.User
+		step.Edge.Schema = schemaConfig.Secret
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasCreatorAPIKey applies the HasEdge predicate on the "creator_api_key" edge.
+func HasCreatorAPIKey() predicate.Secret {
+	return predicate.Secret(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, CreatorAPIKeyTable, CreatorAPIKeyColumn),
+		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.TeamAPIKey
+		step.Edge.Schema = schemaConfig.Secret
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCreatorAPIKeyWith applies the HasEdge predicate on the "creator_api_key" edge with a given conditions (other predicates).
+func HasCreatorAPIKeyWith(preds ...predicate.TeamAPIKey) predicate.Secret {
+	return predicate.Secret(func(s *sql.Selector) {
+		step := newCreatorAPIKeyStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.TeamAPIKey
 		step.Edge.Schema = schemaConfig.Secret
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
