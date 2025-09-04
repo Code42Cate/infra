@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,22 +17,11 @@ import (
 	"github.com/e2b-dev/infra/packages/api/internal/cache/instance"
 	"github.com/e2b-dev/infra/packages/api/internal/utils"
 	"github.com/e2b-dev/infra/packages/db/queries"
-	"github.com/e2b-dev/infra/packages/shared/pkg/consts"
 	featureflags "github.com/e2b-dev/infra/packages/shared/pkg/feature-flags"
 	"github.com/e2b-dev/infra/packages/shared/pkg/logger"
 	sbxlogger "github.com/e2b-dev/infra/packages/shared/pkg/logger/sandbox"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 )
-
-// Deprecated: (07-2025) Used only temporarily during migration phase to take client ID part from sandbox ID instead of from snapshot database row.
-func getSandboxIDClient(sandboxID string) (string, bool) {
-	parts := strings.Split(sandboxID, "-")
-	if len(parts) != 2 {
-		return "", false
-	}
-
-	return parts[1], true
-}
 
 func (a *APIStore) PostSandboxesSandboxIDResume(c *gin.Context, sandboxID api.SandboxID) {
 	ctx := c.Request.Context()
@@ -104,26 +92,7 @@ func (a *APIStore) PostSandboxesSandboxIDResume(c *gin.Context, sandboxID api.Sa
 	snap := lastSnapshot.Snapshot
 	build := lastSnapshot.EnvBuild
 
-	var nodeID *string
-	if snap.OriginNodeID != nil {
-		// TODO: Before, we used Nomad short ID as node reference in snapshots.
-		//  This is a temporary helper to migrate to the new system where we use node ID reported by orchestrator.
-		if len(*snap.OriginNodeID) == consts.NodeIDLength {
-			n := a.orchestrator.GetNodeByNomadShortID(*snap.OriginNodeID)
-			if n != nil {
-				nodeID = &n.ID
-			}
-		} else {
-			nodeID = snap.OriginNodeID
-		}
-	} else {
-		// TODO: After migration period, we can remove this part, because all actively used snapshots will be stored in the database with the node ID.
-		// https://linear.app/e2b/issue/E2B-2662/remove-taking-client-from-sandbox-during-resume
-		sbxClientID, ok := getSandboxIDClient(sandboxID)
-		if ok {
-			nodeID = &sbxClientID
-		}
-	}
+	nodeID := &snap.OriginNodeID
 
 	// Wait for any pausing for this sandbox in progress.
 	pausedOnNode, err := a.orchestrator.WaitForPause(ctx, sandboxID)
@@ -161,7 +130,7 @@ func (a *APIStore) PostSandboxesSandboxIDResume(c *gin.Context, sandboxID api.Sa
 		envdAccessToken = &accessToken
 	}
 
-	secretsFlag, err := a.featureFlags.BoolFlag(featureflags.SecretsFlagName, teamInfo.Team.ID.String())
+	secretsFlag, err := a.featureFlags.BoolFlag(ctx, featureflags.SecretsFlagName)
 	if err != nil {
 		zap.L().Error("error getting metrics read feature flag, soft failing", zap.Error(err))
 	}

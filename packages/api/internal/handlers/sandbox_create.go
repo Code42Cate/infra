@@ -82,12 +82,8 @@ func (a *APIStore) PostSandboxes(c *gin.Context) {
 	_, templateSpan := a.Tracer.Start(ctx, "get-template")
 	defer templateSpan.End()
 
-	clusterID := uuid.Nil
-	if teamInfo.Team.ClusterID != nil {
-		clusterID = *teamInfo.Team.ClusterID
-	}
-
 	// Check if team has access to the environment
+	clusterID := utils.WithClusterFallback(teamInfo.Team.ClusterID)
 	env, build, checkErr := a.templateCache.Get(ctx, cleanedAliasOrEnvID, teamInfo.Team.ID, clusterID, true)
 	if checkErr != nil {
 		telemetry.ReportCriticalError(ctx, "error when getting template", checkErr.Err)
@@ -99,9 +95,7 @@ func (a *APIStore) PostSandboxes(c *gin.Context) {
 	telemetry.ReportEvent(ctx, "Checked team access")
 
 	c.Set("envID", env.TemplateID)
-	if aliases := env.Aliases; aliases != nil {
-		setTemplateNameMetric(c, *aliases)
-	}
+	setTemplateNameMetric(c, env.Aliases)
 
 	sandboxID := InstanceIDPrefix + id.Generate()
 
@@ -142,7 +136,7 @@ func (a *APIStore) PostSandboxes(c *gin.Context) {
 		maps.Copy(envVars, secretEnvVars)
 	}
 
-	secretsFlag, err := a.featureFlags.BoolFlag(featureflags.SecretsFlagName, teamInfo.Team.ID.String())
+	secretsFlag, err := a.featureFlags.BoolFlag(ctx, featureflags.SecretsFlagName)
 	if err != nil {
 		zap.L().Error("error getting metrics read feature flag, soft failing", zap.Error(err))
 	}
@@ -303,12 +297,9 @@ func setTemplateNameMetric(c *gin.Context, aliases []string) {
 	c.Set(metricTemplateAlias, "other")
 }
 
-func firstAlias(aliases *[]string) string {
-	if aliases == nil {
+func firstAlias(aliases []string) string {
+	if len(aliases) == 0 {
 		return ""
 	}
-	if len(*aliases) == 0 {
-		return ""
-	}
-	return (*aliases)[0]
+	return aliases[0]
 }

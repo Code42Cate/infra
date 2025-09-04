@@ -18,13 +18,17 @@ type AccessToken struct {
 	CreatedAt   time.Time
 	ID          *uuid.UUID
 	// sensitive
-	AccessTokenHash       *string
-	AccessTokenMask       *string
+	AccessTokenHash       string
 	Name                  string
-	AccessTokenPrefix     *string
-	AccessTokenLength     *int32
-	AccessTokenMaskPrefix *string
-	AccessTokenMaskSuffix *string
+	AccessTokenPrefix     string
+	AccessTokenLength     int32
+	AccessTokenMaskPrefix string
+	AccessTokenMaskSuffix string
+}
+
+type AuthUser struct {
+	ID    uuid.UUID
+	Email string
 }
 
 type Cluster struct {
@@ -73,8 +77,20 @@ type EnvBuild struct {
 	EnvID              *string
 	EnvdVersion        *string
 	ReadyCmd           *string
-	ClusterNodeID      *string
+	ClusterNodeID      string
 	Reason             types.JSONBStringMap
+}
+
+type Secret struct {
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       *time.Time
+	TeamID          uuid.UUID
+	Label           string
+	Description     string
+	Allowlist       []string
+	CreatedByUser   *uuid.UUID
+	CreatedByApiKey *uuid.UUID
 }
 
 type Snapshot struct {
@@ -86,7 +102,7 @@ type Snapshot struct {
 	BaseEnvID           string
 	SandboxStartedAt    pgtype.Timestamptz
 	EnvSecure           bool
-	OriginNodeID        *string
+	OriginNodeID        string
 	AllowInternetAccess *bool
 	AutoPause           bool
 }
@@ -113,12 +129,11 @@ type TeamApiKey struct {
 	CreatedBy *uuid.UUID
 	ID        uuid.UUID
 	// sensitive
-	ApiKeyHash       *string
-	ApiKeyMask       *string
-	ApiKeyPrefix     *string
-	ApiKeyLength     *int32
-	ApiKeyMaskPrefix *string
-	ApiKeyMaskSuffix *string
+	ApiKeyHash       string
+	ApiKeyPrefix     string
+	ApiKeyLength     int32
+	ApiKeyMaskPrefix string
+	ApiKeyMaskSuffix string
 }
 
 type Tier struct {
