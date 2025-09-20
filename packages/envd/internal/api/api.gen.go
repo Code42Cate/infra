@@ -146,11 +146,11 @@ type PostInitJSONBody struct {
 	// EnvVars Environment variables to set
 	EnvVars *EnvVars `json:"envVars,omitempty"`
 
-	// RootCertificate Root certificate for mitm proxy
-	RootCertificate *string `json:"rootCertificate,omitempty"`
-
 	// HyperloopIP IP address of the hyperloop server to connect to
 	HyperloopIP *string `json:"hyperloopIP,omitempty"`
+
+	// RootCertificate Root certificate for mitm proxy
+	RootCertificate *string `json:"rootCertificate,omitempty"`
 }
 
 // PostFilesMultipartRequestBody defines body for PostFiles for multipart/form-data ContentType.
