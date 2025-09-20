@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetOnce(t *testing.T) {
@@ -16,35 +17,38 @@ func TestSetOnce(t *testing.T) {
 	setOnce.SetValue(1)
 
 	value, err := setOnce.Wait()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, value)
 
 	setOnce.SetValue(2)
 
 	value, err = setOnce.Wait()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, value)
 
 	setOnce.SetError(fmt.Errorf("error"))
 
 	value, err = setOnce.Wait()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, value)
 }
 
 func TestSetOnceSetError(t *testing.T) {
 	setOnce := NewSetOnce[int]()
+	expectedErr := fmt.Errorf("error")
 
-	setOnce.SetError(fmt.Errorf("error"))
+	err := setOnce.SetError(expectedErr)
+	require.NoError(t, err)
 
 	value, err := setOnce.Wait()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, 0, value)
 
-	setOnce.SetValue(1)
+	err = setOnce.SetValue(1)
+	require.ErrorIs(t, err, ErrAlreadySet)
 
 	value, err = setOnce.Wait()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, 0, value)
 }
 
@@ -61,7 +65,7 @@ func TestSetOnceWait(t *testing.T) {
 	}()
 
 	value, err := setOnce.Wait()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, value)
 
 	wg.Wait()
@@ -70,7 +74,7 @@ func TestSetOnceWait(t *testing.T) {
 func TestSetOnceWaitWithContext(t *testing.T) {
 	setOnce := NewSetOnce[int]()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	wg := sync.WaitGroup{}
@@ -83,7 +87,7 @@ func TestSetOnceWaitWithContext(t *testing.T) {
 	}()
 
 	value, err := setOnce.WaitWithContext(ctx)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, value)
 
 	wg.Wait()
@@ -92,7 +96,7 @@ func TestSetOnceWaitWithContext(t *testing.T) {
 func TestSetOnceWaitWithContextCanceled(t *testing.T) {
 	setOnce := NewSetOnce[int]()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	wg := sync.WaitGroup{}
@@ -106,7 +110,7 @@ func TestSetOnceWaitWithContextCanceled(t *testing.T) {
 	}()
 
 	_, err := setOnce.WaitWithContext(ctx)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	wg.Wait()
 }
@@ -139,7 +143,7 @@ func TestSetOnceSetResultConcurrent(t *testing.T) {
 	wg1.Wait()
 
 	value, err := setOnce.Wait()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.LessOrEqual(t, 1, value)
 	assert.GreaterOrEqual(t, 99, value)
@@ -150,7 +154,7 @@ func TestSetOnceSetResultConcurrent(t *testing.T) {
 func TestSetOnceSetResultConcurrentWithContext(t *testing.T) {
 	setOnce := NewSetOnce[int]()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	wg1 := sync.WaitGroup{}
@@ -178,7 +182,7 @@ func TestSetOnceSetResultConcurrentWithContext(t *testing.T) {
 	wg1.Wait()
 
 	value, err := setOnce.WaitWithContext(ctx)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.LessOrEqual(t, 1, value)
 	assert.GreaterOrEqual(t, 99, value)
@@ -191,17 +195,18 @@ func TestSetOnceConcurrentReads(t *testing.T) {
 	const numReaders = 100
 
 	// Set value first
-	setOnce.SetValue(42)
+	err := setOnce.SetValue(42)
+	require.NoError(t, err)
 
 	// Start multiple concurrent readers
 	var wg sync.WaitGroup
 	wg.Add(numReaders)
 
-	for i := 0; i < numReaders; i++ {
+	for range numReaders {
 		go func() {
 			defer wg.Done()
 			value, err := setOnce.Wait()
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, 42, value)
 		}()
 	}
@@ -213,7 +218,7 @@ func TestSetOnceConcurrentReadsWithContext(t *testing.T) {
 	setOnce := NewSetOnce[int]()
 	const numReaders = 100
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Set value first
@@ -223,11 +228,11 @@ func TestSetOnceConcurrentReadsWithContext(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numReaders)
 
-	for i := 0; i < numReaders; i++ {
+	for range numReaders {
 		go func() {
 			defer wg.Done()
 			value, err := setOnce.WaitWithContext(ctx)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, 42, value)
 		}()
 	}
@@ -246,11 +251,11 @@ func TestSetOnceConcurrentReadersBeforeWrite(t *testing.T) {
 	results := make(chan int, numReaders)
 
 	// Launch readers
-	for i := 0; i < numReaders; i++ {
+	for range numReaders {
 		go func() {
 			defer wg.Done()
 			value, err := setOnce.Wait()
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			results <- value
 		}()
 	}
@@ -279,7 +284,7 @@ func TestSetOnceConcurrentReadWriteRace(t *testing.T) {
 	wg.Add(numOperations * 2) // For both readers and writers
 
 	// Launch concurrent readers and writers
-	for i := 0; i < numOperations; i++ {
+	for range numOperations {
 		// Reader
 		go func() {
 			defer wg.Done()
@@ -299,7 +304,7 @@ func TestSetOnceConcurrentReadWriteRace(t *testing.T) {
 
 	// Final value should be 42 if any write succeeded
 	finalValue, err := setOnce.Wait()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 42, finalValue)
 }
 
@@ -308,7 +313,7 @@ func TestNotSetResult(t *testing.T) {
 
 	value, err := setOnce.Result()
 	assert.Equal(t, 0, value)
-	assert.ErrorIs(t, err, ErrNotSet{})
+	assert.ErrorIs(t, err, NotSetError{})
 }
 
 func TestResultAfterDone(t *testing.T) {
@@ -329,7 +334,7 @@ func TestResultAfterDone(t *testing.T) {
 
 	value, err := setOnce.Result()
 	assert.Equal(t, 1, value)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestMultipleDone(t *testing.T) {
@@ -352,5 +357,5 @@ func TestMultipleDone(t *testing.T) {
 
 	value, err := setOnce.Result()
 	assert.Equal(t, 1, value)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

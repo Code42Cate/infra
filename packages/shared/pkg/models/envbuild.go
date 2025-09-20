@@ -28,7 +28,7 @@ type EnvBuild struct {
 	// FinishedAt holds the value of the "finished_at" field.
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
 	// EnvID holds the value of the "env_id" field.
-	EnvID *string `json:"env_id,omitempty"`
+	EnvID string `json:"env_id,omitempty"`
 	// Status holds the value of the "status" field.
 	Status envbuild.Status `json:"status,omitempty"`
 	// Dockerfile holds the value of the "dockerfile" field.
@@ -52,9 +52,9 @@ type EnvBuild struct {
 	// EnvdVersion holds the value of the "envd_version" field.
 	EnvdVersion *string `json:"envd_version,omitempty"`
 	// ClusterNodeID holds the value of the "cluster_node_id" field.
-	ClusterNodeID *string `json:"cluster_node_id,omitempty"`
+	ClusterNodeID string `json:"cluster_node_id,omitempty"`
 	// Reason holds the value of the "reason" field.
-	Reason *schema.BuildReason `json:"reason,omitempty"`
+	Reason schema.BuildReason `json:"reason,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the EnvBuildQuery when eager-loading is set.
 	Edges        EnvBuildEdges `json:"edges"`
@@ -142,8 +142,7 @@ func (eb *EnvBuild) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field env_id", values[i])
 			} else if value.Valid {
-				eb.EnvID = new(string)
-				*eb.EnvID = value.String
+				eb.EnvID = value.String
 			}
 		case envbuild.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -220,8 +219,7 @@ func (eb *EnvBuild) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field cluster_node_id", values[i])
 			} else if value.Valid {
-				eb.ClusterNodeID = new(string)
-				*eb.ClusterNodeID = value.String
+				eb.ClusterNodeID = value.String
 			}
 		case envbuild.FieldReason:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -283,10 +281,8 @@ func (eb *EnvBuild) String() string {
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
-	if v := eb.EnvID; v != nil {
-		builder.WriteString("env_id=")
-		builder.WriteString(*v)
-	}
+	builder.WriteString("env_id=")
+	builder.WriteString(eb.EnvID)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", eb.Status))
@@ -331,10 +327,8 @@ func (eb *EnvBuild) String() string {
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")
-	if v := eb.ClusterNodeID; v != nil {
-		builder.WriteString("cluster_node_id=")
-		builder.WriteString(*v)
-	}
+	builder.WriteString("cluster_node_id=")
+	builder.WriteString(eb.ClusterNodeID)
 	builder.WriteString(", ")
 	builder.WriteString("reason=")
 	builder.WriteString(fmt.Sprintf("%v", eb.Reason))

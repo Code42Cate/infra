@@ -1,6 +1,7 @@
 package uffd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/uffd/fdexit"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/uffd/mapping"
 	"github.com/e2b-dev/infra/packages/shared/pkg/logger"
+	"github.com/e2b-dev/infra/packages/shared/pkg/utils"
 )
 
 const (
@@ -25,7 +27,7 @@ const (
 )
 
 type Uffd struct {
-	exitCh  chan error
+	exit    *utils.ErrorOnce
 	readyCh chan struct{}
 
 	fdExit *fdexit.FdExit
@@ -35,6 +37,8 @@ type Uffd struct {
 	memfile    *block.TrackedSliceDevice
 	socketPath string
 }
+
+var _ MemoryBackend = (*Uffd)(nil)
 
 func New(memfile block.ReadonlyDevice, socketPath string, blockSize int64) (*Uffd, error) {
 	trackedMemfile, err := block.NewTrackedSliceDevice(blockSize, memfile)
@@ -48,7 +52,7 @@ func New(memfile block.ReadonlyDevice, socketPath string, blockSize int64) (*Uff
 	}
 
 	return &Uffd{
-		exitCh:     make(chan error, 1),
+		exit:       utils.NewErrorOnce(),
 		readyCh:    make(chan struct{}, 1),
 		fdExit:     fdExit,
 		memfile:    trackedMemfile,
@@ -56,7 +60,7 @@ func New(memfile block.ReadonlyDevice, socketPath string, blockSize int64) (*Uff
 	}, nil
 }
 
-func (u *Uffd) Start(sandboxId string) error {
+func (u *Uffd) Start(ctx context.Context, sandboxId string) error {
 	lis, err := net.ListenUnix("unix", &net.UnixAddr{Name: u.socketPath, Net: "unix"})
 	if err != nil {
 		return fmt.Errorf("failed listening on socket: %w", err)
@@ -71,20 +75,19 @@ func (u *Uffd) Start(sandboxId string) error {
 
 	go func() {
 		// TODO: If the handle function fails, we should kill the sandbox
-		handleErr := u.handle(sandboxId)
+		handleErr := u.handle(ctx, sandboxId)
 		closeErr := u.lis.Close()
 		fdExitErr := u.fdExit.Close()
 
-		u.exitCh <- errors.Join(handleErr, closeErr, fdExitErr)
+		u.exit.SetError(errors.Join(handleErr, closeErr, fdExitErr))
 
 		close(u.readyCh)
-		close(u.exitCh)
 	}()
 
 	return nil
 }
 
-func (u *Uffd) handle(sandboxId string) error {
+func (u *Uffd) handle(ctx context.Context, sandboxId string) error {
 	err := u.lis.SetDeadline(time.Now().Add(uffdMsgListenerTimeout))
 	if err != nil {
 		return fmt.Errorf("failed setting listener deadline: %w", err)
@@ -144,6 +147,7 @@ func (u *Uffd) handle(sandboxId string) error {
 	u.readyCh <- struct{}{}
 
 	err = Serve(
+		ctx,
 		uffd,
 		m,
 		u.memfile,
@@ -165,8 +169,8 @@ func (u *Uffd) Ready() chan struct{} {
 	return u.readyCh
 }
 
-func (u *Uffd) Exit() chan error {
-	return u.exitCh
+func (u *Uffd) Exit() *utils.ErrorOnce {
+	return u.exit
 }
 
 func (u *Uffd) TrackAndReturnNil() error {

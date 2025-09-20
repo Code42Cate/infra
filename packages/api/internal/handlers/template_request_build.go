@@ -12,9 +12,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/e2b-dev/infra/packages/api/internal/api"
+	templatecache "github.com/e2b-dev/infra/packages/api/internal/cache/templates"
 	"github.com/e2b-dev/infra/packages/api/internal/constants"
 	"github.com/e2b-dev/infra/packages/api/internal/utils"
 	"github.com/e2b-dev/infra/packages/db/queries"
+	"github.com/e2b-dev/infra/packages/shared/pkg/consts"
 	"github.com/e2b-dev/infra/packages/shared/pkg/id"
 	"github.com/e2b-dev/infra/packages/shared/pkg/logger"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models"
@@ -23,10 +25,11 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/envbuild"
 	"github.com/e2b-dev/infra/packages/shared/pkg/schema"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
+	gutils "github.com/e2b-dev/infra/packages/shared/pkg/utils"
 )
 
 type BuildTemplateRequest struct {
-	ClusterID     *uuid.UUID
+	ClusterID     uuid.UUID
 	BuilderNodeID string
 	TemplateID    api.TemplateID
 	IsNew         bool
@@ -45,7 +48,7 @@ type TemplateBuildResponse struct {
 	TemplateID         string
 	BuildID            string
 	Public             bool
-	Aliases            *[]string
+	Aliases            []string
 	KernelVersion      string
 	FirecrackerVersion string
 	StartCmd           *string
@@ -85,8 +88,26 @@ func (a *APIStore) PostTemplatesTemplateID(c *gin.Context, templateID api.Templa
 }
 
 func (a *APIStore) BuildTemplate(ctx context.Context, req BuildTemplateRequest) (*TemplateBuildResponse, *api.APIError) {
-	ctx, span := a.Tracer.Start(ctx, "build-template-request")
+	ctx, span := tracer.Start(ctx, "build-template-request")
 	defer span.End()
+
+	// Limit concurrent template builds
+	teamBuilds := a.templateBuildsCache.GetRunningBuildsForTeam(req.Team.ID)
+
+	// Exclude the current build if it's a rebuild (it will be cancelled)
+	teamBuildsExcludingCurrent := gutils.Filter(teamBuilds, func(item templatecache.TemplateBuildInfo) bool {
+		return item.TemplateID != req.TemplateID
+	})
+	if len(teamBuildsExcludingCurrent) >= int(req.Tier.ConcurrentTemplateBuilds) {
+		telemetry.ReportError(ctx, "team has reached max concurrent template builds", nil, telemetry.WithTeamID(req.Team.ID.String()), attribute.Int64("tier.concurrent_template_builds", req.Tier.ConcurrentTemplateBuilds))
+		return nil, &api.APIError{
+			Code: http.StatusTooManyRequests,
+			ClientMsg: fmt.Sprintf(
+				"you have reached the maximum number of concurrent template builds (%d). Please wait for existing builds to complete or contact support if you need more concurrent builds.",
+				req.Tier.ConcurrentTemplateBuilds),
+			Err: fmt.Errorf("team '%s' has reached the maximum number of concurrent template builds (%d)", req.Team.ID, req.Tier.ConcurrentTemplateBuilds),
+		}
+	}
 
 	public := false
 	if !req.IsNew {
@@ -188,6 +209,11 @@ func (a *APIStore) BuildTemplate(ctx context.Context, req BuildTemplateRequest) 
 	}
 	defer tx.Rollback()
 
+	var clusterID *uuid.UUID
+	if req.ClusterID != consts.LocalClusterID {
+		clusterID = &req.ClusterID
+	}
+
 	// Create the template / or update the build count
 	err = tx.
 		Env.
@@ -196,7 +222,7 @@ func (a *APIStore) BuildTemplate(ctx context.Context, req BuildTemplateRequest) 
 		SetTeamID(req.Team.ID).
 		SetNillableCreatedBy(req.UserID).
 		SetPublic(false).
-		SetNillableClusterID(req.ClusterID).
+		SetNillableClusterID(clusterID).
 		OnConflictColumns(env.FieldID).
 		UpdateUpdatedAt().
 		Update(func(e *models.EnvUpsert) {
@@ -359,10 +385,10 @@ func (a *APIStore) BuildTemplate(ctx context.Context, req BuildTemplateRequest) 
 	zap.L().Info("template build requested", logger.WithTemplateID(req.TemplateID), logger.WithBuildID(buildID.String()))
 
 	return &TemplateBuildResponse{
-		TemplateID:         *build.EnvID,
+		TemplateID:         build.EnvID,
 		BuildID:            build.ID.String(),
 		Public:             public,
-		Aliases:            &aliases,
+		Aliases:            aliases,
 		KernelVersion:      build.KernelVersion,
 		FirecrackerVersion: build.FirecrackerVersion,
 		StartCmd:           build.StartCmd,
@@ -436,7 +462,7 @@ func (a *APIStore) TemplateRequestBuild(c *gin.Context, templateID api.TemplateI
 		return nil
 	}
 
-	builderNodeID, err := a.templateManager.GetAvailableBuildClient(ctx, team.ClusterID)
+	builderNodeID, err := a.templateManager.GetAvailableBuildClient(ctx, utils.WithClusterFallback(team.ClusterID))
 	if err != nil {
 		telemetry.ReportCriticalError(ctx, "error when getting available build client", err, telemetry.WithTemplateID(templateID))
 		a.sendAPIStoreError(c, http.StatusBadRequest, "Error when getting available build client")
@@ -445,7 +471,7 @@ func (a *APIStore) TemplateRequestBuild(c *gin.Context, templateID api.TemplateI
 
 	// Create the build
 	buildReq := BuildTemplateRequest{
-		ClusterID:     team.ClusterID,
+		ClusterID:     utils.WithClusterFallback(team.ClusterID),
 		BuilderNodeID: builderNodeID,
 		TemplateID:    templateID,
 		IsNew:         new,
@@ -504,7 +530,6 @@ func getCPUAndRAM(tier *queries.Tier, cpuCount, memoryMB *int32) (int64, int64, 
 				Code:      http.StatusBadRequest,
 			}
 		}
-
 	}
 
 	if memoryMB != nil {

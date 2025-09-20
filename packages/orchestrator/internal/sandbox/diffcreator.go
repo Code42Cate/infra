@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/bits-and-blooms/bitset"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/rootfs"
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage"
@@ -20,16 +19,15 @@ type DiffCreator interface {
 }
 
 type RootfsDiffCreator struct {
-	rootfs   rootfs.Provider
-	stopHook func(context.Context) error
+	rootfs    rootfs.Provider
+	closeHook func(context.Context) error
 }
 
 func (r *RootfsDiffCreator) process(ctx context.Context, out io.Writer) (*header.DiffMetadata, error) {
-	return r.rootfs.ExportDiff(ctx, out, r.stopHook)
+	return r.rootfs.ExportDiff(ctx, out, r.closeHook)
 }
 
 type MemoryDiffCreator struct {
-	tracer     trace.Tracer
 	memfile    *storage.TemporaryMemfile
 	dirtyPages *bitset.BitSet
 	blockSize  int64
@@ -52,7 +50,6 @@ func (r *MemoryDiffCreator) process(ctx context.Context, out io.Writer) (h *head
 
 	return header.WriteDiffWithTrace(
 		ctx,
-		r.tracer,
 		memfileSource,
 		r.blockSize,
 		r.dirtyPages,

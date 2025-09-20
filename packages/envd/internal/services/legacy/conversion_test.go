@@ -3,6 +3,7 @@ package legacy
 import (
 	"bytes"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -15,10 +16,11 @@ import (
 
 	"github.com/e2b-dev/infra/packages/envd/internal/services/spec/filesystem"
 	"github.com/e2b-dev/infra/packages/envd/internal/services/spec/filesystem/filesystemconnect"
+	"github.com/e2b-dev/infra/packages/envd/internal/services/spec/filesystem/filesystemconnect/mocks"
 )
 
 func TestFilesystemClient_FieldFormatter(t *testing.T) {
-	fsh := NewMockFilesystemHandler(t)
+	fsh := filesystemconnectmocks.NewMockFilesystemHandler(t)
 	fsh.EXPECT().Move(mock.Anything, mock.Anything).Return(connect.NewResponse(&filesystem.MoveResponse{
 		Entry: &filesystem.EntryInfo{
 			Name:  "test-name",
@@ -33,8 +35,8 @@ func TestFilesystemClient_FieldFormatter(t *testing.T) {
 	)
 
 	t.Run("can return all fields", func(t *testing.T) {
-		buf := bytes.NewBuffer([]byte(`{}`))
-		req := httptest.NewRequest("POST", filesystemconnect.FilesystemMoveProcedure, buf)
+		buf := bytes.NewBufferString(`{}`)
+		req := httptest.NewRequest(http.MethodPost, filesystemconnect.FilesystemMoveProcedure, buf)
 		req.Header.Set("content-type", "application/json")
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
@@ -48,12 +50,12 @@ func TestFilesystemClient_FieldFormatter(t *testing.T) {
 		// specifically in regard to whitespace after colons. This normalizes it so the order no
 		// longer matters.
 		text := strings.ReplaceAll(string(data), " ", "")
-		assert.Equal(t, `{"entry":{"name":"test-name","owner":"new-extra-field"}}`, text)
+		assert.JSONEq(t, `{"entry":{"name":"test-name","owner":"new-extra-field"}}`, text)
 	})
 
 	t.Run("can hide fields when appropriate", func(t *testing.T) {
-		buf := bytes.NewBuffer([]byte(`{}`))
-		req := httptest.NewRequest("POST", filesystemconnect.FilesystemMoveProcedure, buf)
+		buf := bytes.NewBufferString(`{}`)
+		req := httptest.NewRequest(http.MethodPost, filesystemconnect.FilesystemMoveProcedure, buf)
 		req.Header.Set("user-agent", brokenUserAgent)
 		req.Header.Set("content-type", "application/json")
 		w := httptest.NewRecorder()
@@ -63,7 +65,7 @@ func TestFilesystemClient_FieldFormatter(t *testing.T) {
 
 		data, err := io.ReadAll(w.Body)
 		require.NoError(t, err)
-		assert.Equal(t, string(data), `{"entry":{"name":"test-name"}}`)
+		assert.JSONEq(t, `{"entry":{"name":"test-name"}}`, string(data))
 	})
 }
 

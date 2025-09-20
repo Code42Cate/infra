@@ -15,25 +15,27 @@ import (
 
 // ResumeSandbox creates sandboxes for resuming existing templates
 type ResumeSandbox struct {
-	config sandbox.Config
+	config  sandbox.Config
+	timeout time.Duration
 }
 
-func NewResumeSandbox(config sandbox.Config) SandboxCreator {
-	return &ResumeSandbox{config: config}
+var _ SandboxCreator = (*ResumeSandbox)(nil)
+
+func NewResumeSandbox(config sandbox.Config, timeout time.Duration) *ResumeSandbox {
+	return &ResumeSandbox{config: config, timeout: timeout}
 }
 
-func (f *ResumeSandbox) Sandbox(
+func (rs *ResumeSandbox) Sandbox(
 	ctx context.Context,
 	layerExecutor *LayerExecutor,
 	template sbxtemplate.Template,
 ) (*sandbox.Sandbox, error) {
 	sbx, err := sandbox.ResumeSandbox(
 		ctx,
-		layerExecutor.tracer,
 		layerExecutor.networkPool,
 		nil,
 		template,
-		f.config,
+		rs.config,
 		sandbox.RuntimeMetadata{
 			TemplateID:  layerExecutor.Config.TemplateID,
 			SandboxID:   config.InstanceBuildPrefix + id.Generate(),
@@ -41,7 +43,7 @@ func (f *ResumeSandbox) Sandbox(
 		},
 		uuid.New().String(),
 		time.Now(),
-		time.Now().Add(layerTimeout),
+		time.Now().Add(rs.timeout),
 		layerExecutor.devicePool,
 		false,
 		nil,

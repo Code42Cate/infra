@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/internal"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/predicate"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
@@ -30,20 +31,6 @@ type TeamAPIKeyUpdate struct {
 // Where appends a list predicates to the TeamAPIKeyUpdate builder.
 func (taku *TeamAPIKeyUpdate) Where(ps ...predicate.TeamAPIKey) *TeamAPIKeyUpdate {
 	taku.mutation.Where(ps...)
-	return taku
-}
-
-// SetAPIKey sets the "api_key" field.
-func (taku *TeamAPIKeyUpdate) SetAPIKey(s string) *TeamAPIKeyUpdate {
-	taku.mutation.SetAPIKey(s)
-	return taku
-}
-
-// SetNillableAPIKey sets the "api_key" field if the given value is not nil.
-func (taku *TeamAPIKeyUpdate) SetNillableAPIKey(s *string) *TeamAPIKeyUpdate {
-	if s != nil {
-		taku.SetAPIKey(*s)
-	}
 	return taku
 }
 
@@ -173,6 +160,21 @@ func (taku *TeamAPIKeyUpdate) SetCreator(u *User) *TeamAPIKeyUpdate {
 	return taku.SetCreatorID(u.ID)
 }
 
+// AddCreatedSecretIDs adds the "created_secrets" edge to the Secret entity by IDs.
+func (taku *TeamAPIKeyUpdate) AddCreatedSecretIDs(ids ...uuid.UUID) *TeamAPIKeyUpdate {
+	taku.mutation.AddCreatedSecretIDs(ids...)
+	return taku
+}
+
+// AddCreatedSecrets adds the "created_secrets" edges to the Secret entity.
+func (taku *TeamAPIKeyUpdate) AddCreatedSecrets(s ...*Secret) *TeamAPIKeyUpdate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return taku.AddCreatedSecretIDs(ids...)
+}
+
 // Mutation returns the TeamAPIKeyMutation object of the builder.
 func (taku *TeamAPIKeyUpdate) Mutation() *TeamAPIKeyMutation {
 	return taku.mutation
@@ -188,6 +190,27 @@ func (taku *TeamAPIKeyUpdate) ClearTeam() *TeamAPIKeyUpdate {
 func (taku *TeamAPIKeyUpdate) ClearCreator() *TeamAPIKeyUpdate {
 	taku.mutation.ClearCreator()
 	return taku
+}
+
+// ClearCreatedSecrets clears all "created_secrets" edges to the Secret entity.
+func (taku *TeamAPIKeyUpdate) ClearCreatedSecrets() *TeamAPIKeyUpdate {
+	taku.mutation.ClearCreatedSecrets()
+	return taku
+}
+
+// RemoveCreatedSecretIDs removes the "created_secrets" edge to Secret entities by IDs.
+func (taku *TeamAPIKeyUpdate) RemoveCreatedSecretIDs(ids ...uuid.UUID) *TeamAPIKeyUpdate {
+	taku.mutation.RemoveCreatedSecretIDs(ids...)
+	return taku
+}
+
+// RemoveCreatedSecrets removes "created_secrets" edges to Secret entities.
+func (taku *TeamAPIKeyUpdate) RemoveCreatedSecrets(s ...*Secret) *TeamAPIKeyUpdate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return taku.RemoveCreatedSecretIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -242,9 +265,6 @@ func (taku *TeamAPIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := taku.mutation.APIKey(); ok {
-		_spec.SetField(teamapikey.FieldAPIKey, field.TypeString, value)
 	}
 	if value, ok := taku.mutation.APIKeyHash(); ok {
 		_spec.SetField(teamapikey.FieldAPIKeyHash, field.TypeString, value)
@@ -326,6 +346,54 @@ func (taku *TeamAPIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if taku.mutation.CreatedSecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   teamapikey.CreatedSecretsTable,
+			Columns: []string{teamapikey.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = taku.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := taku.mutation.RemovedCreatedSecretsIDs(); len(nodes) > 0 && !taku.mutation.CreatedSecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   teamapikey.CreatedSecretsTable,
+			Columns: []string{teamapikey.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = taku.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := taku.mutation.CreatedSecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   teamapikey.CreatedSecretsTable,
+			Columns: []string{teamapikey.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = taku.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.Node.Schema = taku.schemaConfig.TeamAPIKey
 	ctx = internal.NewSchemaConfigContext(ctx, taku.schemaConfig)
 	_spec.AddModifiers(taku.modifiers...)
@@ -348,20 +416,6 @@ type TeamAPIKeyUpdateOne struct {
 	hooks     []Hook
 	mutation  *TeamAPIKeyMutation
 	modifiers []func(*sql.UpdateBuilder)
-}
-
-// SetAPIKey sets the "api_key" field.
-func (takuo *TeamAPIKeyUpdateOne) SetAPIKey(s string) *TeamAPIKeyUpdateOne {
-	takuo.mutation.SetAPIKey(s)
-	return takuo
-}
-
-// SetNillableAPIKey sets the "api_key" field if the given value is not nil.
-func (takuo *TeamAPIKeyUpdateOne) SetNillableAPIKey(s *string) *TeamAPIKeyUpdateOne {
-	if s != nil {
-		takuo.SetAPIKey(*s)
-	}
-	return takuo
 }
 
 // SetAPIKeyHash sets the "api_key_hash" field.
@@ -490,6 +544,21 @@ func (takuo *TeamAPIKeyUpdateOne) SetCreator(u *User) *TeamAPIKeyUpdateOne {
 	return takuo.SetCreatorID(u.ID)
 }
 
+// AddCreatedSecretIDs adds the "created_secrets" edge to the Secret entity by IDs.
+func (takuo *TeamAPIKeyUpdateOne) AddCreatedSecretIDs(ids ...uuid.UUID) *TeamAPIKeyUpdateOne {
+	takuo.mutation.AddCreatedSecretIDs(ids...)
+	return takuo
+}
+
+// AddCreatedSecrets adds the "created_secrets" edges to the Secret entity.
+func (takuo *TeamAPIKeyUpdateOne) AddCreatedSecrets(s ...*Secret) *TeamAPIKeyUpdateOne {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return takuo.AddCreatedSecretIDs(ids...)
+}
+
 // Mutation returns the TeamAPIKeyMutation object of the builder.
 func (takuo *TeamAPIKeyUpdateOne) Mutation() *TeamAPIKeyMutation {
 	return takuo.mutation
@@ -505,6 +574,27 @@ func (takuo *TeamAPIKeyUpdateOne) ClearTeam() *TeamAPIKeyUpdateOne {
 func (takuo *TeamAPIKeyUpdateOne) ClearCreator() *TeamAPIKeyUpdateOne {
 	takuo.mutation.ClearCreator()
 	return takuo
+}
+
+// ClearCreatedSecrets clears all "created_secrets" edges to the Secret entity.
+func (takuo *TeamAPIKeyUpdateOne) ClearCreatedSecrets() *TeamAPIKeyUpdateOne {
+	takuo.mutation.ClearCreatedSecrets()
+	return takuo
+}
+
+// RemoveCreatedSecretIDs removes the "created_secrets" edge to Secret entities by IDs.
+func (takuo *TeamAPIKeyUpdateOne) RemoveCreatedSecretIDs(ids ...uuid.UUID) *TeamAPIKeyUpdateOne {
+	takuo.mutation.RemoveCreatedSecretIDs(ids...)
+	return takuo
+}
+
+// RemoveCreatedSecrets removes "created_secrets" edges to Secret entities.
+func (takuo *TeamAPIKeyUpdateOne) RemoveCreatedSecrets(s ...*Secret) *TeamAPIKeyUpdateOne {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return takuo.RemoveCreatedSecretIDs(ids...)
 }
 
 // Where appends a list predicates to the TeamAPIKeyUpdate builder.
@@ -590,9 +680,6 @@ func (takuo *TeamAPIKeyUpdateOne) sqlSave(ctx context.Context) (_node *TeamAPIKe
 			}
 		}
 	}
-	if value, ok := takuo.mutation.APIKey(); ok {
-		_spec.SetField(teamapikey.FieldAPIKey, field.TypeString, value)
-	}
 	if value, ok := takuo.mutation.APIKeyHash(); ok {
 		_spec.SetField(teamapikey.FieldAPIKeyHash, field.TypeString, value)
 	}
@@ -668,6 +755,54 @@ func (takuo *TeamAPIKeyUpdateOne) sqlSave(ctx context.Context) (_node *TeamAPIKe
 			},
 		}
 		edge.Schema = takuo.schemaConfig.TeamAPIKey
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if takuo.mutation.CreatedSecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   teamapikey.CreatedSecretsTable,
+			Columns: []string{teamapikey.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = takuo.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := takuo.mutation.RemovedCreatedSecretsIDs(); len(nodes) > 0 && !takuo.mutation.CreatedSecretsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   teamapikey.CreatedSecretsTable,
+			Columns: []string{teamapikey.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = takuo.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := takuo.mutation.CreatedSecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   teamapikey.CreatedSecretsTable,
+			Columns: []string{teamapikey.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = takuo.schemaConfig.Secret
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}

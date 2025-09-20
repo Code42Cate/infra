@@ -11,19 +11,20 @@ import (
 	"github.com/dustin/go-humanize"
 	containerregistry "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/config"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/core/filesystem"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/core/oci"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/core/systeminit"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/writer"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/constants"
 	artifactsregistry "github.com/e2b-dev/infra/packages/shared/pkg/artifacts-registry"
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 )
+
+var tracer = otel.Tracer("github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/core/rootfs")
 
 const (
 	// Max size of the rootfs file in MB.
@@ -68,8 +69,7 @@ func New(
 
 func (r *Rootfs) CreateExt4Filesystem(
 	ctx context.Context,
-	tracer trace.Tracer,
-	postProcessor *writer.PostProcessor,
+	logger *zap.Logger,
 	rootfsPath string,
 	provisionScript string,
 	provisionLogPrefix string,
@@ -83,14 +83,14 @@ func (r *Rootfs) CreateExt4Filesystem(
 		}
 	}()
 
-	postProcessor.Debug("Requesting Docker Image")
+	logger.Debug("Requesting Docker Image")
 
 	var img containerregistry.Image
 	var err error
 	if r.template.FromImage != "" {
-		img, err = oci.GetPublicImage(childCtx, tracer, r.template.FromImage)
+		img, err = oci.GetPublicImage(childCtx, r.template.FromImage, r.template.RegistryAuthProvider)
 	} else {
-		img, err = oci.GetImage(childCtx, tracer, r.artifactRegistry, r.template.TemplateID, r.metadata.BuildID)
+		img, err = oci.GetImage(childCtx, r.artifactRegistry, r.template.TemplateID, r.metadata.BuildID)
 	}
 	if err != nil {
 		return containerregistry.Config{}, fmt.Errorf("error requesting docker image: %w", err)
@@ -100,9 +100,9 @@ func (r *Rootfs) CreateExt4Filesystem(
 	if err != nil {
 		return containerregistry.Config{}, fmt.Errorf("error getting image size: %w", err)
 	}
-	postProcessor.Info(fmt.Sprintf("Base Docker image size: %s", humanize.Bytes(uint64(imageSize))))
+	logger.Info(fmt.Sprintf("Base Docker image size: %s", humanize.Bytes(uint64(imageSize))))
 
-	postProcessor.Debug("Setting up system files")
+	logger.Debug("Setting up system files")
 	layers, err := additionalOCILayers(childCtx, r.template, provisionScript, provisionLogPrefix)
 	if err != nil {
 		return containerregistry.Config{}, fmt.Errorf("error populating filesystem: %w", err)
@@ -113,22 +113,22 @@ func (r *Rootfs) CreateExt4Filesystem(
 	}
 	telemetry.ReportEvent(childCtx, "set up filesystem")
 
-	postProcessor.Info("Creating file system and pulling Docker image")
-	ext4Size, err := oci.ToExt4(ctx, tracer, postProcessor, img, rootfsPath, maxRootfsSize, r.template.RootfsBlockSize())
+	logger.Info("Creating file system and pulling Docker image")
+	ext4Size, err := oci.ToExt4(ctx, logger, img, rootfsPath, maxRootfsSize, r.template.RootfsBlockSize())
 	if err != nil {
 		return containerregistry.Config{}, fmt.Errorf("error creating ext4 filesystem: %w", err)
 	}
 	telemetry.ReportEvent(childCtx, "created rootfs ext4 file")
 
-	postProcessor.Debug("Filesystem cleanup")
+	logger.Debug("Filesystem cleanup")
 	// Make rootfs writable, be default it's readonly
-	err = filesystem.MakeWritable(ctx, tracer, rootfsPath)
+	err = filesystem.MakeWritable(ctx, rootfsPath)
 	if err != nil {
 		return containerregistry.Config{}, fmt.Errorf("error making rootfs file writable: %w", err)
 	}
 
 	// Resize rootfs
-	rootfsFreeSpace, err := filesystem.GetFreeSpace(ctx, tracer, rootfsPath, r.template.RootfsBlockSize())
+	rootfsFreeSpace, err := filesystem.GetFreeSpace(ctx, rootfsPath, r.template.RootfsBlockSize())
 	if err != nil {
 		return containerregistry.Config{}, fmt.Errorf("error getting free space: %w", err)
 	}
@@ -142,7 +142,7 @@ func (r *Rootfs) CreateExt4Filesystem(
 		zap.Int64("size_free", rootfsFreeSpace),
 	)
 	if diskAdd > 0 {
-		_, err := filesystem.Enlarge(ctx, tracer, rootfsPath, diskAdd)
+		_, err := filesystem.Enlarge(ctx, rootfsPath, diskAdd)
 		if err != nil {
 			return containerregistry.Config{}, fmt.Errorf("error enlarging rootfs: %w", err)
 		}
@@ -270,8 +270,6 @@ echo "System Init"`), Mode: 0o777},
 		map[string]string{
 			// Enable envd service autostart
 			"etc/systemd/system/multi-user.target.wants/envd.service": "etc/systemd/system/envd.service",
-			// Enable chrony service autostart
-			"etc/systemd/system/multi-user.target.wants/chrony.service": "etc/systemd/system/chrony.service",
 		},
 	)
 	if err != nil {

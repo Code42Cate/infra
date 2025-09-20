@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/txn2/txeh"
+
 	"github.com/e2b-dev/infra/packages/envd/internal/host"
 	"github.com/e2b-dev/infra/packages/envd/internal/logs"
 )
@@ -58,9 +60,12 @@ func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
 
 			logger.Debug().Msg("Root certificate installed successfully")
 		}
-	}
 
-	go func() {
+		if initRequest.HyperloopIP != nil {
+			a.SetupHyperloop(*initRequest.HyperloopIP)
+		}
+	}
+	go func() { //nolint:contextcheck // TODO: fix this later
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		host.PollForMMDSOpts(ctx, a.mmdsChan, a.envVars)
@@ -70,4 +75,22 @@ func (a *API) PostInit(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "")
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *API) SetupHyperloop(address string) {
+	hosts, err := txeh.NewHosts(&txeh.HostsConfig{ReadFilePath: "/etc/hosts", WriteFilePath: "/etc/hosts"})
+	if err != nil {
+		a.logger.Error().Msgf("Failed to create hosts: %v", err)
+		return
+	}
+
+	// Update /etc/hosts to point events.e2b.dev to the hyperloop IP
+	// This will remove any existing entries for events.e2b.dev first
+	hosts.AddHost(address, "events.e2b.dev")
+	err = hosts.Save()
+	if err != nil {
+		a.logger.Error().Msgf("Failed to add events host entry: %v", err)
+	}
+
+	a.envVars.Store("E2B_EVENTS_ADDRESS", fmt.Sprintf("http://%s", address))
 }

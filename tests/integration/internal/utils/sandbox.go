@@ -28,6 +28,12 @@ func WithMetadata(metadata api.SandboxMetadata) SandboxOption {
 	}
 }
 
+func WithoutAnyMetadata() SandboxOption {
+	return func(config *SandboxConfig) {
+		config.metadata = make(map[string]string)
+	}
+}
+
 func WithTimeout(timeout int32) SandboxOption {
 	return func(config *SandboxConfig) {
 		config.timeout = timeout
@@ -89,5 +95,5 @@ func TeardownSandbox(t *testing.T, c *api.ClientWithResponses, sandboxID string)
 	killSandboxResponse, err := c.DeleteSandboxesSandboxIDWithResponse(ctx, sandboxID, setup.WithAPIKey())
 	require.NoError(t, err)
 
-	assert.True(t, killSandboxResponse.StatusCode() == http.StatusNoContent || killSandboxResponse.StatusCode() == http.StatusNotFound)
+	assert.Contains(t, []int{http.StatusNoContent, http.StatusNotFound}, killSandboxResponse.StatusCode())
 }

@@ -11,12 +11,11 @@ import (
 	txtTemplate "text/template"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/sandboxtools"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/storage/paths"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/writer"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/metadata"
 	templatemanager "github.com/e2b-dev/infra/packages/shared/pkg/grpc/template-manager"
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage"
@@ -26,6 +25,8 @@ type Copy struct {
 	FilesStorage storage.StorageProvider
 	CacheScope   string
 }
+
+var _ Command = (*Copy)(nil)
 
 type copyScriptData struct {
 	SourcePath string
@@ -82,8 +83,7 @@ fi
 // because the /tmp is mounted as a tmpfs and deleted on restart.
 func (c *Copy) Execute(
 	ctx context.Context,
-	tracer trace.Tracer,
-	postProcessor *writer.PostProcessor,
+	logger *zap.Logger,
 	proxy *proxy.SandboxProxy,
 	sandboxID string,
 	prefix string,
@@ -111,7 +111,7 @@ func (c *Copy) Execute(
 	// Start writing tar data to the pipe writer in a goroutine
 	go func() {
 		defer pw.Close()
-		if _, err := obj.WriteTo(pw); err != nil {
+		if _, err := obj.WriteTo(ctx, pw); err != nil {
 			pw.CloseWithError(err)
 		}
 	}()
@@ -132,7 +132,7 @@ func (c *Copy) Execute(
 	// This is happening because the /tmp is mounted as a tmpfs and deleted on restart.
 	sbxTargetPath := filepath.Join("/tmp", fmt.Sprintf("%s.tar", *step.FilesHash))
 	// 2) Copy the tar file to the sandbox
-	err = sandboxtools.CopyFile(ctx, tracer, proxy, sandboxID, cmdMetadata.User, tmpFile.Name(), sbxTargetPath)
+	err = sandboxtools.CopyFile(ctx, proxy, sandboxID, cmdMetadata.User, tmpFile.Name(), sbxTargetPath)
 	if err != nil {
 		return metadata.Context{}, fmt.Errorf("failed to copy layer tar data to sandbox: %w", err)
 	}
@@ -142,7 +142,6 @@ func (c *Copy) Execute(
 	// 3) Extract the tar file in the sandbox's /tmp directory
 	err = sandboxtools.RunCommand(
 		ctx,
-		tracer,
 		proxy,
 		sandboxID,
 		fmt.Sprintf(`mkdir -p "%s" && tar -xzvf "%s" -C "%s"`, sbxUnpackPath, sbxTargetPath, sbxUnpackPath),
@@ -168,7 +167,6 @@ func (c *Copy) Execute(
 
 	err = sandboxtools.RunCommand(
 		ctx,
-		tracer,
 		proxy,
 		sandboxID,
 		moveScript.String(),
@@ -185,7 +183,6 @@ func (c *Copy) Execute(
 		if owner != "" {
 			err = sandboxtools.RunCommand(
 				ctx,
-				tracer,
 				proxy,
 				sandboxID,
 				fmt.Sprintf(`chown -R %s "%s"`, owner, targetPath),
@@ -205,7 +202,6 @@ func (c *Copy) Execute(
 		if permissions != "" {
 			err = sandboxtools.RunCommand(
 				ctx,
-				tracer,
 				proxy,
 				sandboxID,
 				fmt.Sprintf(`chmod -R %s "%s"`, permissions, targetPath),

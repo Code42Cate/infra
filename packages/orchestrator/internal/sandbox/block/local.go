@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -17,6 +18,8 @@ type Local struct {
 	header *header.Header
 }
 
+var _ ReadonlyDevice = (*Local)(nil)
+
 func NewLocal(path string, blockSize int64, buildID uuid.UUID) (*Local, error) {
 	f, err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -28,11 +31,14 @@ func NewLocal(path string, blockSize int64, buildID uuid.UUID) (*Local, error) {
 		return nil, fmt.Errorf("failed to get file info: %w", err)
 	}
 
-	h := header.NewHeader(header.NewTemplateMetadata(
+	h, err := header.NewHeader(header.NewTemplateMetadata(
 		buildID,
 		uint64(blockSize),
 		uint64(info.Size()),
 	), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create header: %w", err)
+	}
 
 	return &Local{
 		f:      f,
@@ -45,8 +51,8 @@ func (d *Local) Path() string {
 	return d.path
 }
 
-func (d *Local) ReadAt(p []byte, off int64) (int, error) {
-	slice, err := d.Slice(off, int64(len(p)))
+func (d *Local) ReadAt(ctx context.Context, p []byte, off int64) (int, error) {
+	slice, err := d.Slice(ctx, off, int64(len(p)))
 	if err != nil {
 		return 0, fmt.Errorf("failed to slice mmap: %w", err)
 	}
@@ -75,7 +81,7 @@ func (d *Local) Close() (e error) {
 	return nil
 }
 
-func (d *Local) Slice(off, length int64) ([]byte, error) {
+func (d *Local) Slice(ctx context.Context, off, length int64) ([]byte, error) {
 	end := off + length
 	size := int64(d.header.Metadata.Size)
 	if end > size {

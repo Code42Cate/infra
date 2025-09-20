@@ -4,22 +4,22 @@ import (
 	"context"
 	"fmt"
 
-	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/sandboxtools"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/writer"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/metadata"
 	templatemanager "github.com/e2b-dev/infra/packages/shared/pkg/grpc/template-manager"
 )
 
 type Run struct{}
 
+var _ Command = (*Run)(nil)
+
 func (r *Run) Execute(
 	ctx context.Context,
-	tracer trace.Tracer,
-	postProcessor *writer.PostProcessor,
+	logger *zap.Logger,
 	proxy *proxy.SandboxProxy,
 	sandboxID string,
 	prefix string,
@@ -42,9 +42,8 @@ func (r *Run) Execute(
 	cmd := args[0]
 	err := sandboxtools.RunCommandWithLogger(
 		ctx,
-		tracer,
 		proxy,
-		postProcessor,
+		logger,
 		zapcore.InfoLevel,
 		prefix,
 		sandboxID,
@@ -52,7 +51,7 @@ func (r *Run) Execute(
 		cmdMetadata,
 	)
 	if err != nil {
-		return metadata.Context{}, fmt.Errorf("failed to run command: %w", err)
+		return metadata.Context{}, fmt.Errorf("failed to run command '%s': %w", cmd, err)
 	}
 
 	return originalMetadata, nil

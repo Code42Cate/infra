@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
@@ -25,6 +28,10 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage"
 )
 
+const layerTimeout = time.Hour
+
+var tracer = otel.Tracer("github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/phases/steps")
+
 type StepBuilder struct {
 	buildcontext.BuildContext
 
@@ -32,7 +39,6 @@ type StepBuilder struct {
 	step       *templatemanager.TemplateStep
 
 	logger *zap.Logger
-	tracer trace.Tracer
 	proxy  *proxy.SandboxProxy
 
 	layerExecutor   *layer.LayerExecutor
@@ -44,7 +50,6 @@ type StepBuilder struct {
 func New(
 	buildContext buildcontext.BuildContext,
 	logger *zap.Logger,
-	tracer trace.Tracer,
 	proxy *proxy.SandboxProxy,
 	layerExecutor *layer.LayerExecutor,
 	commandExecutor *commands.CommandExecutor,
@@ -60,7 +65,6 @@ func New(
 		step:       step,
 
 		logger: logger,
-		tracer: tracer,
 		proxy:  proxy,
 
 		layerExecutor:   layerExecutor,
@@ -80,8 +84,9 @@ func (sb *StepBuilder) String(ctx context.Context) (string, error) {
 
 func (sb *StepBuilder) Metadata() phases.PhaseMeta {
 	return phases.PhaseMeta{
-		Phase:    metrics.PhaseSteps,
-		StepType: sb.step.Type,
+		Phase:      metrics.PhaseSteps,
+		StepType:   sb.step.Type,
+		StepNumber: &sb.stepNumber,
 	}
 }
 
@@ -90,6 +95,13 @@ func (sb *StepBuilder) Layer(
 	sourceLayer phases.LayerResult,
 	hash string,
 ) (phases.LayerResult, error) {
+	ctx, span := tracer.Start(ctx, "compute step", trace.WithAttributes(
+		attribute.Int("step", sb.stepNumber),
+		attribute.String("type", sb.step.Type),
+		attribute.String("hash", hash),
+	))
+	defer span.End()
+
 	forceBuild := sb.step.Force != nil && *sb.step.Force
 	if !forceBuild {
 		m, err := sb.index.LayerMetaFromHash(ctx, hash)
@@ -126,9 +138,17 @@ func (sb *StepBuilder) Layer(
 
 func (sb *StepBuilder) Build(
 	ctx context.Context,
+	userLogger *zap.Logger,
 	sourceLayer phases.LayerResult,
 	currentLayer phases.LayerResult,
 ) (phases.LayerResult, error) {
+	ctx, span := tracer.Start(ctx, "build step", trace.WithAttributes(
+		attribute.Int("step", sb.stepNumber),
+		attribute.String("type", sb.step.Type),
+		attribute.String("hash", currentLayer.Hash),
+	))
+	defer span.End()
+
 	prefix := sb.Prefix()
 	step := sb.step
 
@@ -147,33 +167,33 @@ func (sb *StepBuilder) Build(
 	// First not cached layer is create (to change CPU, Memory, etc), subsequent are layers are resumes.
 	var sandboxCreator layer.SandboxCreator
 	if sourceLayer.Cached {
-		sandboxCreator = layer.NewCreateSandbox(sbxConfig, fc.FirecrackerVersions{
-			KernelVersion:      sb.Template.KernelVersion,
-			FirecrackerVersion: sb.Template.FirecrackerVersion,
-		})
+		sandboxCreator = layer.NewCreateSandbox(
+			sbxConfig,
+			layerTimeout,
+			fc.FirecrackerVersions{
+				KernelVersion:      sb.Template.KernelVersion,
+				FirecrackerVersion: sb.Template.FirecrackerVersion,
+			},
+		)
 	} else {
-		sandboxCreator = layer.NewResumeSandbox(sbxConfig)
+		sandboxCreator = layer.NewResumeSandbox(sbxConfig, layerTimeout)
 	}
 
 	actionExecutor := layer.NewFunctionAction(func(ctx context.Context, sbx *sandbox.Sandbox, meta metadata.Template) (metadata.Template, error) {
 		cmdMeta, err := sb.commandExecutor.Execute(
 			ctx,
+			userLogger,
 			sbx,
 			prefix,
 			step,
 			meta.Context,
 		)
 		if err != nil {
-			return metadata.Template{}, &phases.PhaseBuildError{
-				Phase: string(metrics.PhaseSteps),
-				Step:  fmt.Sprintf("%d", sb.stepNumber),
-				Err:   err,
-			}
+			return metadata.Template{}, phases.NewPhaseBuildError(sb, err)
 		}
 
 		err = sandboxtools.SyncChangesToDisk(
 			ctx,
-			sb.tracer,
 			sb.proxy,
 			sbx.Runtime.SandboxID,
 		)
@@ -185,8 +205,10 @@ func (sb *StepBuilder) Build(
 		return meta, nil
 	})
 
-	meta, err := sb.layerExecutor.BuildLayer(ctx, layer.LayerBuildCommand{
-		SourceTemplate: sourceLayer.Metadata.Template,
+	templateProvider := layer.NewCacheSourceTemplateProvider(sourceLayer.Metadata.Template)
+
+	meta, err := sb.layerExecutor.BuildLayer(ctx, userLogger, layer.LayerBuildCommand{
+		SourceTemplate: templateProvider,
 		CurrentLayer:   currentLayer.Metadata,
 		Hash:           currentLayer.Hash,
 		UpdateEnvd:     sourceLayer.Cached,

@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
@@ -34,9 +35,12 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage/header"
 )
 
+const progressDelay = 5 * time.Second
+
+var tracer = otel.Tracer("github.com/e2b-dev/infra/packages/orchestrator/internal/template/build")
+
 type Builder struct {
 	logger *zap.Logger
-	tracer trace.Tracer
 
 	templateStorage  storage.StorageProvider
 	buildStorage     storage.StorageProvider
@@ -51,7 +55,6 @@ type Builder struct {
 
 func NewBuilder(
 	logger *zap.Logger,
-	tracer trace.Tracer,
 	templateStorage storage.StorageProvider,
 	buildStorage storage.StorageProvider,
 	artifactRegistry artifactsregistry.ArtifactsRegistry,
@@ -64,7 +67,6 @@ func NewBuilder(
 ) *Builder {
 	return &Builder{
 		logger:           logger,
-		tracer:           tracer,
 		templateStorage:  templateStorage,
 		buildStorage:     buildStorage,
 		artifactRegistry: artifactRegistry,
@@ -96,8 +98,8 @@ type Result struct {
 //
 // 8. Snapshot
 // 9. Upload template (and all not yet uploaded layers)
-func (b *Builder) Build(ctx context.Context, template storage.TemplateFiles, config config.TemplateConfig, logsWriter *zap.Logger) (r *Result, e error) {
-	ctx, childSpan := b.tracer.Start(ctx, "build")
+func (b *Builder) Build(ctx context.Context, template storage.TemplateFiles, config config.TemplateConfig, logsCore zapcore.Core) (r *Result, e error) {
+	ctx, childSpan := tracer.Start(ctx, "build")
 	defer childSpan.End()
 
 	// Record build duration and result at the end
@@ -110,11 +112,9 @@ func (b *Builder) Build(ctx context.Context, template storage.TemplateFiles, con
 		if success {
 			b.metrics.RecordBuildResult(ctx, true)
 			b.metrics.RecordRootfsSize(ctx, r.RootfsSizeMB<<constants.ToMBShift)
-		} else {
+		} else if !errors.Is(e, context.Canceled) {
 			// Skip reporting failure metrics only on explicit cancellation
-			if !errors.Is(e, context.Canceled) {
-				b.metrics.RecordBuildResult(ctx, false)
-			}
+			b.metrics.RecordBuildResult(ctx, false)
 		}
 	}()
 
@@ -125,18 +125,29 @@ func (b *Builder) Build(ctx context.Context, template storage.TemplateFiles, con
 
 	isV1Build := config.FromImage == "" && config.FromTemplate == nil
 
-	postProcessor := writer.NewPostProcessor(ctx, logsWriter, isV1Build)
-	go postProcessor.Start()
+	logger := zap.New(logsCore)
 	defer func() {
-		postProcessor.Stop(ctx, e)
+		if e != nil {
+			logger.Error(fmt.Sprintf("Build failed: %v", e))
+		} else {
+			logger.Info(fmt.Sprintf("Build finished, took %s",
+				time.Since(startTime).Truncate(time.Second).String()))
+		}
 	}()
 
-	postProcessor.Info(fmt.Sprintf("Building template %s/%s", config.TemplateID, template.BuildID))
+	if isV1Build {
+		hookedCore, done := writer.NewPostProcessor(progressDelay, logsCore)
+		defer done()
+		logger = zap.New(hookedCore)
+	}
+
+	logger.Info(fmt.Sprintf("Building template %s/%s", config.TemplateID, template.BuildID))
 
 	defer func(ctx context.Context) {
 		if e == nil {
 			return
 		}
+
 		// Remove build files if build fails
 		removeErr := b.templateStorage.DeleteObjectsWithPrefix(ctx, template.BuildID)
 		if removeErr != nil {
@@ -149,7 +160,7 @@ func (b *Builder) Build(ctx context.Context, template storage.TemplateFiles, con
 		return nil, fmt.Errorf("error getting envd version: %w", err)
 	}
 
-	uploadErrGroup, _ := errgroup.WithContext(ctx)
+	var uploadErrGroup errgroup.Group
 	defer func() {
 		// Wait for all template layers to be uploaded even if the build fails
 		err := uploadErrGroup.Wait()
@@ -161,25 +172,25 @@ func (b *Builder) Build(ctx context.Context, template storage.TemplateFiles, con
 	buildContext := buildcontext.BuildContext{
 		Config:         config,
 		Template:       template,
-		UserLogger:     postProcessor,
-		UploadErrGroup: uploadErrGroup,
+		UploadErrGroup: &uploadErrGroup,
 		EnvdVersion:    envdVersion,
 		CacheScope:     cacheScope,
 		IsV1Build:      isV1Build,
 	}
 
-	return runBuild(ctx, buildContext, b)
+	return runBuild(ctx, logger, buildContext, b)
 }
 
 func runBuild(
 	ctx context.Context,
+	userLogger *zap.Logger,
 	bc buildcontext.BuildContext,
 	builder *Builder,
 ) (*Result, error) {
 	index := cache.NewHashIndex(bc.CacheScope, builder.buildStorage, builder.templateStorage)
 
 	layerExecutor := layer.NewLayerExecutor(bc,
-		builder.tracer,
+		builder.logger,
 		builder.networkPool,
 		builder.devicePool,
 		builder.templateCache,
@@ -193,7 +204,7 @@ func runBuild(
 	baseBuilder := base.New(
 		bc,
 		builder.logger,
-		builder.tracer,
+		builder.proxy,
 		builder.templateStorage,
 		builder.devicePool,
 		builder.networkPool,
@@ -205,7 +216,6 @@ func runBuild(
 
 	commandExecutor := commands.NewCommandExecutor(
 		bc,
-		builder.tracer,
 		builder.buildStorage,
 		builder.proxy,
 	)
@@ -213,7 +223,6 @@ func runBuild(
 	stepBuilders := steps.CreateStepPhases(
 		bc,
 		builder.logger,
-		builder.tracer,
 		builder.proxy,
 		layerExecutor,
 		commandExecutor,
@@ -223,7 +232,6 @@ func runBuild(
 
 	postProcessingBuilder := finalize.New(
 		bc,
-		builder.tracer,
 		builder.templateStorage,
 		builder.proxy,
 		layerExecutor,
@@ -236,7 +244,7 @@ func runBuild(
 	builders = append(builders, stepBuilders...)
 	builders = append(builders, postProcessingBuilder)
 
-	lastLayerResult, err := phases.Run(ctx, bc, builder.metrics, builders)
+	lastLayerResult, err := phases.Run(ctx, userLogger, bc, builder.metrics, builders)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +300,7 @@ func getRootfsSize(
 		return 0, fmt.Errorf("error opening rootfs header object: %w", err)
 	}
 
-	h, err := header.Deserialize(obj)
+	h, err := header.Deserialize(ctx, obj)
 	if err != nil {
 		return 0, fmt.Errorf("error deserializing rootfs header: %w", err)
 	}

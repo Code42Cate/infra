@@ -15,6 +15,8 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/predicate"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
@@ -101,9 +103,87 @@ func (su *SecretUpdate) SetAllowlist(pa pq.StringArray) *SecretUpdate {
 	return su
 }
 
+// SetCreatedByUser sets the "created_by_user" field.
+func (su *SecretUpdate) SetCreatedByUser(u uuid.UUID) *SecretUpdate {
+	su.mutation.SetCreatedByUser(u)
+	return su
+}
+
+// SetNillableCreatedByUser sets the "created_by_user" field if the given value is not nil.
+func (su *SecretUpdate) SetNillableCreatedByUser(u *uuid.UUID) *SecretUpdate {
+	if u != nil {
+		su.SetCreatedByUser(*u)
+	}
+	return su
+}
+
+// ClearCreatedByUser clears the value of the "created_by_user" field.
+func (su *SecretUpdate) ClearCreatedByUser() *SecretUpdate {
+	su.mutation.ClearCreatedByUser()
+	return su
+}
+
+// SetCreatedByAPIKey sets the "created_by_api_key" field.
+func (su *SecretUpdate) SetCreatedByAPIKey(u uuid.UUID) *SecretUpdate {
+	su.mutation.SetCreatedByAPIKey(u)
+	return su
+}
+
+// SetNillableCreatedByAPIKey sets the "created_by_api_key" field if the given value is not nil.
+func (su *SecretUpdate) SetNillableCreatedByAPIKey(u *uuid.UUID) *SecretUpdate {
+	if u != nil {
+		su.SetCreatedByAPIKey(*u)
+	}
+	return su
+}
+
+// ClearCreatedByAPIKey clears the value of the "created_by_api_key" field.
+func (su *SecretUpdate) ClearCreatedByAPIKey() *SecretUpdate {
+	su.mutation.ClearCreatedByAPIKey()
+	return su
+}
+
 // SetTeam sets the "team" edge to the Team entity.
 func (su *SecretUpdate) SetTeam(t *Team) *SecretUpdate {
 	return su.SetTeamID(t.ID)
+}
+
+// SetCreatorUserID sets the "creator_user" edge to the User entity by ID.
+func (su *SecretUpdate) SetCreatorUserID(id uuid.UUID) *SecretUpdate {
+	su.mutation.SetCreatorUserID(id)
+	return su
+}
+
+// SetNillableCreatorUserID sets the "creator_user" edge to the User entity by ID if the given value is not nil.
+func (su *SecretUpdate) SetNillableCreatorUserID(id *uuid.UUID) *SecretUpdate {
+	if id != nil {
+		su = su.SetCreatorUserID(*id)
+	}
+	return su
+}
+
+// SetCreatorUser sets the "creator_user" edge to the User entity.
+func (su *SecretUpdate) SetCreatorUser(u *User) *SecretUpdate {
+	return su.SetCreatorUserID(u.ID)
+}
+
+// SetCreatorAPIKeyID sets the "creator_api_key" edge to the TeamAPIKey entity by ID.
+func (su *SecretUpdate) SetCreatorAPIKeyID(id uuid.UUID) *SecretUpdate {
+	su.mutation.SetCreatorAPIKeyID(id)
+	return su
+}
+
+// SetNillableCreatorAPIKeyID sets the "creator_api_key" edge to the TeamAPIKey entity by ID if the given value is not nil.
+func (su *SecretUpdate) SetNillableCreatorAPIKeyID(id *uuid.UUID) *SecretUpdate {
+	if id != nil {
+		su = su.SetCreatorAPIKeyID(*id)
+	}
+	return su
+}
+
+// SetCreatorAPIKey sets the "creator_api_key" edge to the TeamAPIKey entity.
+func (su *SecretUpdate) SetCreatorAPIKey(t *TeamAPIKey) *SecretUpdate {
+	return su.SetCreatorAPIKeyID(t.ID)
 }
 
 // Mutation returns the SecretMutation object of the builder.
@@ -114,6 +194,18 @@ func (su *SecretUpdate) Mutation() *SecretMutation {
 // ClearTeam clears the "team" edge to the Team entity.
 func (su *SecretUpdate) ClearTeam() *SecretUpdate {
 	su.mutation.ClearTeam()
+	return su
+}
+
+// ClearCreatorUser clears the "creator_user" edge to the User entity.
+func (su *SecretUpdate) ClearCreatorUser() *SecretUpdate {
+	su.mutation.ClearCreatorUser()
+	return su
+}
+
+// ClearCreatorAPIKey clears the "creator_api_key" edge to the TeamAPIKey entity.
+func (su *SecretUpdate) ClearCreatorAPIKey() *SecretUpdate {
+	su.mutation.ClearCreatorAPIKey()
 	return su
 }
 
@@ -216,6 +308,68 @@ func (su *SecretUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if su.mutation.CreatorUserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorUserTable,
+			Columns: []string{secret.CreatorUserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = su.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.CreatorUserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorUserTable,
+			Columns: []string{secret.CreatorUserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = su.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if su.mutation.CreatorAPIKeyCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorAPIKeyTable,
+			Columns: []string{secret.CreatorAPIKeyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(teamapikey.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = su.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.CreatorAPIKeyIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorAPIKeyTable,
+			Columns: []string{secret.CreatorAPIKeyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(teamapikey.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = su.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.Node.Schema = su.schemaConfig.Secret
 	ctx = internal.NewSchemaConfigContext(ctx, su.schemaConfig)
 	_spec.AddModifiers(su.modifiers...)
@@ -308,9 +462,87 @@ func (suo *SecretUpdateOne) SetAllowlist(pa pq.StringArray) *SecretUpdateOne {
 	return suo
 }
 
+// SetCreatedByUser sets the "created_by_user" field.
+func (suo *SecretUpdateOne) SetCreatedByUser(u uuid.UUID) *SecretUpdateOne {
+	suo.mutation.SetCreatedByUser(u)
+	return suo
+}
+
+// SetNillableCreatedByUser sets the "created_by_user" field if the given value is not nil.
+func (suo *SecretUpdateOne) SetNillableCreatedByUser(u *uuid.UUID) *SecretUpdateOne {
+	if u != nil {
+		suo.SetCreatedByUser(*u)
+	}
+	return suo
+}
+
+// ClearCreatedByUser clears the value of the "created_by_user" field.
+func (suo *SecretUpdateOne) ClearCreatedByUser() *SecretUpdateOne {
+	suo.mutation.ClearCreatedByUser()
+	return suo
+}
+
+// SetCreatedByAPIKey sets the "created_by_api_key" field.
+func (suo *SecretUpdateOne) SetCreatedByAPIKey(u uuid.UUID) *SecretUpdateOne {
+	suo.mutation.SetCreatedByAPIKey(u)
+	return suo
+}
+
+// SetNillableCreatedByAPIKey sets the "created_by_api_key" field if the given value is not nil.
+func (suo *SecretUpdateOne) SetNillableCreatedByAPIKey(u *uuid.UUID) *SecretUpdateOne {
+	if u != nil {
+		suo.SetCreatedByAPIKey(*u)
+	}
+	return suo
+}
+
+// ClearCreatedByAPIKey clears the value of the "created_by_api_key" field.
+func (suo *SecretUpdateOne) ClearCreatedByAPIKey() *SecretUpdateOne {
+	suo.mutation.ClearCreatedByAPIKey()
+	return suo
+}
+
 // SetTeam sets the "team" edge to the Team entity.
 func (suo *SecretUpdateOne) SetTeam(t *Team) *SecretUpdateOne {
 	return suo.SetTeamID(t.ID)
+}
+
+// SetCreatorUserID sets the "creator_user" edge to the User entity by ID.
+func (suo *SecretUpdateOne) SetCreatorUserID(id uuid.UUID) *SecretUpdateOne {
+	suo.mutation.SetCreatorUserID(id)
+	return suo
+}
+
+// SetNillableCreatorUserID sets the "creator_user" edge to the User entity by ID if the given value is not nil.
+func (suo *SecretUpdateOne) SetNillableCreatorUserID(id *uuid.UUID) *SecretUpdateOne {
+	if id != nil {
+		suo = suo.SetCreatorUserID(*id)
+	}
+	return suo
+}
+
+// SetCreatorUser sets the "creator_user" edge to the User entity.
+func (suo *SecretUpdateOne) SetCreatorUser(u *User) *SecretUpdateOne {
+	return suo.SetCreatorUserID(u.ID)
+}
+
+// SetCreatorAPIKeyID sets the "creator_api_key" edge to the TeamAPIKey entity by ID.
+func (suo *SecretUpdateOne) SetCreatorAPIKeyID(id uuid.UUID) *SecretUpdateOne {
+	suo.mutation.SetCreatorAPIKeyID(id)
+	return suo
+}
+
+// SetNillableCreatorAPIKeyID sets the "creator_api_key" edge to the TeamAPIKey entity by ID if the given value is not nil.
+func (suo *SecretUpdateOne) SetNillableCreatorAPIKeyID(id *uuid.UUID) *SecretUpdateOne {
+	if id != nil {
+		suo = suo.SetCreatorAPIKeyID(*id)
+	}
+	return suo
+}
+
+// SetCreatorAPIKey sets the "creator_api_key" edge to the TeamAPIKey entity.
+func (suo *SecretUpdateOne) SetCreatorAPIKey(t *TeamAPIKey) *SecretUpdateOne {
+	return suo.SetCreatorAPIKeyID(t.ID)
 }
 
 // Mutation returns the SecretMutation object of the builder.
@@ -321,6 +553,18 @@ func (suo *SecretUpdateOne) Mutation() *SecretMutation {
 // ClearTeam clears the "team" edge to the Team entity.
 func (suo *SecretUpdateOne) ClearTeam() *SecretUpdateOne {
 	suo.mutation.ClearTeam()
+	return suo
+}
+
+// ClearCreatorUser clears the "creator_user" edge to the User entity.
+func (suo *SecretUpdateOne) ClearCreatorUser() *SecretUpdateOne {
+	suo.mutation.ClearCreatorUser()
+	return suo
+}
+
+// ClearCreatorAPIKey clears the "creator_api_key" edge to the TeamAPIKey entity.
+func (suo *SecretUpdateOne) ClearCreatorAPIKey() *SecretUpdateOne {
+	suo.mutation.ClearCreatorAPIKey()
 	return suo
 }
 
@@ -445,6 +689,68 @@ func (suo *SecretUpdateOne) sqlSave(ctx context.Context) (_node *Secret, err err
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(team.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = suo.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if suo.mutation.CreatorUserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorUserTable,
+			Columns: []string{secret.CreatorUserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = suo.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.CreatorUserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorUserTable,
+			Columns: []string{secret.CreatorUserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = suo.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if suo.mutation.CreatorAPIKeyCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorAPIKeyTable,
+			Columns: []string{secret.CreatorAPIKeyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(teamapikey.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = suo.schemaConfig.Secret
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.CreatorAPIKeyIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorAPIKeyTable,
+			Columns: []string{secret.CreatorAPIKeyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(teamapikey.FieldID, field.TypeUUID),
 			},
 		}
 		edge.Schema = suo.schemaConfig.Secret

@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.opentelemetry.io/otel/trace/noop"
+	"github.com/stretchr/testify/require"
 
 	"github.com/e2b-dev/infra/packages/api/internal/api"
 	"github.com/e2b-dev/infra/packages/api/internal/orchestrator/nodemanager"
@@ -17,6 +17,11 @@ import (
 
 type mockAlgorithm struct {
 	mock.Mock
+}
+
+func (m *mockAlgorithm) excludeNode(err error) bool {
+	args := m.Called(err)
+	return args.Bool(0)
 }
 
 func (m *mockAlgorithm) chooseNode(ctx context.Context, nodes []*nodemanager.Node, nodesExcluded map[string]struct{}, requested nodemanager.SandboxResources) (*nodemanager.Node, error) {
@@ -28,13 +33,12 @@ func (m *mockAlgorithm) chooseNode(ctx context.Context, nodes []*nodemanager.Nod
 }
 
 func TestPlaceSandbox_SuccessfulPlacement(t *testing.T) {
-	ctx := context.Background()
-	tracer := noop.NewTracerProvider().Tracer("")
+	ctx := t.Context()
 
 	// Create test nodes
-	node1 := nodemanager.NewTestNode("node1", api.NodeStatusReady, 30)
-	node2 := nodemanager.NewTestNode("node2", api.NodeStatusReady, 50)
-	node3 := nodemanager.NewTestNode("node3", api.NodeStatusReady, 70)
+	node1 := nodemanager.NewTestNode("node1", api.NodeStatusReady, 3, 4)
+	node2 := nodemanager.NewTestNode("node2", api.NodeStatusReady, 5, 4)
+	node3 := nodemanager.NewTestNode("node3", api.NodeStatusReady, 7, 4)
 	nodes := []*nodemanager.Node{node1, node2, node3}
 
 	// Create a mock algorithm that returns node2
@@ -50,22 +54,21 @@ func TestPlaceSandbox_SuccessfulPlacement(t *testing.T) {
 		},
 	}
 
-	resultNode, err := PlaceSandbox(ctx, tracer, algorithm, nodes, nil, sbxRequest)
+	resultNode, err := PlaceSandbox(ctx, algorithm, nodes, nil, sbxRequest)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resultNode)
 	assert.Equal(t, node2, resultNode)
 	algorithm.AssertExpectations(t)
 }
 
 func TestPlaceSandbox_WithPreferredNode(t *testing.T) {
-	ctx := context.Background()
-	tracer := noop.NewTracerProvider().Tracer("")
+	ctx := t.Context()
 
 	// Create test nodes
-	node1 := nodemanager.NewTestNode("node1", api.NodeStatusReady, 30)
-	node2 := nodemanager.NewTestNode("node2", api.NodeStatusReady, 50)
-	node3 := nodemanager.NewTestNode("node3", api.NodeStatusReady, 70)
+	node1 := nodemanager.NewTestNode("node1", api.NodeStatusReady, 3, 4)
+	node2 := nodemanager.NewTestNode("node2", api.NodeStatusReady, 5, 4)
+	node3 := nodemanager.NewTestNode("node3", api.NodeStatusReady, 7, 4)
 	nodes := []*nodemanager.Node{node1, node2, node3}
 
 	sbxRequest := &orchestrator.SandboxCreateRequest{
@@ -81,15 +84,15 @@ func TestPlaceSandbox_WithPreferredNode(t *testing.T) {
 	algorithm.On("chooseNode", mock.Anything, nodes, mock.Anything, mock.Anything).
 		Return(node1, nil).Once()
 
-	resultNode, err := PlaceSandbox(ctx, tracer, algorithm, nodes, nil, sbxRequest)
-	assert.NoError(t, err)
+	resultNode, err := PlaceSandbox(ctx, algorithm, nodes, nil, sbxRequest)
+	require.NoError(t, err)
 	assert.NotNil(t, resultNode)
 	assert.Equal(t, node1, resultNode)
 	algorithm.AssertExpectations(t)
 
 	// Test with preferred node - should use the preferred node directly without calling algorithm
-	resultNode, err = PlaceSandbox(ctx, tracer, algorithm, nodes, node2, sbxRequest)
-	assert.NoError(t, err)
+	resultNode, err = PlaceSandbox(ctx, algorithm, nodes, node2, sbxRequest)
+	require.NoError(t, err)
 	assert.NotNil(t, resultNode)
 	assert.Equal(t, node2, resultNode)
 	// Algorithm should not be called when preferred node is provided
@@ -97,10 +100,8 @@ func TestPlaceSandbox_WithPreferredNode(t *testing.T) {
 }
 
 func TestPlaceSandbox_ContextTimeout(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Millisecond)
 	defer cancel()
-
-	tracer := noop.NewTracerProvider().Tracer("")
 
 	algorithm := &mockAlgorithm{}
 	algorithm.On("chooseNode", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -118,17 +119,37 @@ func TestPlaceSandbox_ContextTimeout(t *testing.T) {
 		},
 	}
 
-	resultNode, err := PlaceSandbox(ctx, tracer, algorithm, []*nodemanager.Node{}, nil, sbxRequest)
+	resultNode, err := PlaceSandbox(ctx, algorithm, []*nodemanager.Node{
+		nodemanager.NewTestNode("node1", api.NodeStatusReady, 3, 4),
+	}, nil, sbxRequest)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, resultNode)
 	// The error could be either "timeout" from the algorithm or "request timed out" from ctx.Done()
 	assert.True(t, err.Error() == "timeout" || errors.Is(err, context.DeadlineExceeded))
 }
 
-func TestPlaceSandbox_AlgorithmError(t *testing.T) {
-	ctx := context.Background()
-	tracer := noop.NewTracerProvider().Tracer("")
+func TestPlaceSandbox_NoNodes(t *testing.T) {
+	ctx := t.Context()
+
+	algorithm := &mockAlgorithm{}
+	sbxRequest := &orchestrator.SandboxCreateRequest{
+		Sandbox: &orchestrator.SandboxConfig{
+			SandboxId: "test-sandbox",
+			Vcpu:      2,
+			RamMb:     1024,
+		},
+	}
+
+	resultNode, err := PlaceSandbox(ctx, algorithm, []*nodemanager.Node{}, nil, sbxRequest)
+
+	require.Error(t, err)
+	assert.Nil(t, resultNode)
+	assert.Contains(t, err.Error(), "no nodes available")
+}
+
+func TestPlaceSandbox_AllNodesExcluded(t *testing.T) {
+	ctx := t.Context()
 
 	algorithm := &mockAlgorithm{}
 	algorithm.On("chooseNode", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -142,9 +163,11 @@ func TestPlaceSandbox_AlgorithmError(t *testing.T) {
 		},
 	}
 
-	resultNode, err := PlaceSandbox(ctx, tracer, algorithm, []*nodemanager.Node{}, nil, sbxRequest)
+	resultNode, err := PlaceSandbox(ctx, algorithm, []*nodemanager.Node{
+		nodemanager.NewTestNode("node1", api.NodeStatusReady, 3, 4),
+	}, nil, sbxRequest)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, resultNode)
 	assert.Contains(t, err.Error(), "no nodes available")
 	algorithm.AssertExpectations(t)

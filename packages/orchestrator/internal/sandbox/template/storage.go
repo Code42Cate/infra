@@ -39,10 +39,10 @@ func NewStorage(
 			return nil, err
 		}
 
-		diffHeader, err := header.Deserialize(headerObject)
+		diffHeader, err := header.Deserialize(ctx, headerObject)
 
 		// If we can't find the diff header in storage, we switch to templates without a headers
-		if err != nil && !errors.Is(err, storage.ErrorObjectNotExist) {
+		if err != nil && !errors.Is(err, storage.ErrObjectNotExist) {
 			return nil, fmt.Errorf("failed to deserialize header: %w", err)
 		}
 
@@ -59,7 +59,7 @@ func NewStorage(
 			return nil, err
 		}
 
-		size, err := object.Size()
+		size, err := object.Size(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get object size: %w", err)
 		}
@@ -81,7 +81,7 @@ func NewStorage(
 			return nil, fmt.Errorf("unsupported file type: %s", fileType)
 		}
 
-		h = header.NewHeader(&header.Metadata{
+		h, err = header.NewHeader(&header.Metadata{
 			// The version is always 1 for the old style template without a header.
 			Version:     1,
 			BuildId:     id,
@@ -90,6 +90,9 @@ func NewStorage(
 			BlockSize:   blockSize,
 			Generation:  1,
 		}, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create header for old style template: %w", err)
+		}
 	}
 
 	b := build.NewFile(h, store, fileType, persistence, metrics)
@@ -100,8 +103,8 @@ func NewStorage(
 	}, nil
 }
 
-func (d *Storage) ReadAt(p []byte, off int64) (int, error) {
-	return d.source.ReadAt(p, off)
+func (d *Storage) ReadAt(ctx context.Context, p []byte, off int64) (int, error) {
+	return d.source.ReadAt(ctx, p, off)
 }
 
 func (d *Storage) Size() (int64, error) {
@@ -112,8 +115,8 @@ func (d *Storage) BlockSize() int64 {
 	return int64(d.header.Metadata.BlockSize)
 }
 
-func (d *Storage) Slice(off, length int64) ([]byte, error) {
-	return d.source.Slice(off, length)
+func (d *Storage) Slice(ctx context.Context, off, length int64) ([]byte, error) {
+	return d.source.Slice(ctx, off, length)
 }
 
 func (d *Storage) Header() *header.Header {

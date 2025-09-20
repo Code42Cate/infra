@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/e2b-dev/infra/packages/shared/pkg/consts"
 )
 
@@ -55,17 +53,20 @@ type PostInitJSONBody struct {
 	EnvVars         *map[string]string `json:"envVars"`
 	AccessToken     *string            `json:"accessToken,omitempty"`
 	RootCertificate *string            `json:"rootCertificate,omitempty"`
+	HyperloopIP     *string            `json:"hyperloopIP,omitempty"`
 }
 
-func (s *Sandbox) initEnvd(ctx context.Context, tracer trace.Tracer, envVars map[string]string, accessToken *string, rootCertificate *string) error {
+func (s *Sandbox) initEnvd(ctx context.Context, envVars map[string]string, accessToken *string, rootCertificate *string) error {
 	childCtx, childSpan := tracer.Start(ctx, "envd-init")
 	defer childSpan.End()
 
+	hyperloopIP := s.Slot.HyperloopIPString()
 	address := fmt.Sprintf("http://%s:%d/init", s.Slot.HostIPString(), consts.DefaultEnvdServerPort)
 	jsonBody := &PostInitJSONBody{
 		EnvVars:         &envVars,
 		AccessToken:     accessToken,
 		RootCertificate: rootCertificate,
+		HyperloopIP:     &hyperloopIP,
 	}
 
 	body, err := json.Marshal(jsonBody)

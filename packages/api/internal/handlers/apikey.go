@@ -1,9 +1,10 @@
 package handlers
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +14,7 @@ import (
 	"github.com/e2b-dev/infra/packages/api/internal/api"
 	"github.com/e2b-dev/infra/packages/api/internal/team"
 	"github.com/e2b-dev/infra/packages/api/internal/utils"
-	"github.com/e2b-dev/infra/packages/shared/pkg/keys"
+	"github.com/e2b-dev/infra/packages/db/queries"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
@@ -40,8 +41,14 @@ func (a *APIStore) PatchApiKeysApiKeyID(c *gin.Context, apiKeyID string) {
 
 	teamID := a.GetTeamInfo(c).Team.ID
 
-	err = a.db.Client.TeamAPIKey.UpdateOneID(apiKeyIDParsed).Where(teamapikey.TeamID(teamID)).SetName(body.Name).SetUpdatedAt(time.Now()).Exec(ctx)
-	if models.IsNotFound(err) {
+	now := time.Now()
+	_, err = a.sqlcDB.UpdateTeamApiKey(ctx, queries.UpdateTeamApiKeyParams{
+		Name:      body.Name,
+		UpdatedAt: &now,
+		ID:        apiKeyIDParsed,
+		TeamID:    teamID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
 		c.String(http.StatusNotFound, "id not found")
 		return
 	} else if err != nil {
@@ -59,11 +66,7 @@ func (a *APIStore) GetApiKeys(c *gin.Context) {
 
 	teamID := a.GetTeamInfo(c).Team.ID
 
-	apiKeysDB, err := a.db.Client.TeamAPIKey.
-		Query().
-		Where(teamapikey.TeamID(teamID)).
-		WithCreator().
-		All(ctx)
+	apiKeysDB, err := a.sqlcDB.GetTeamAPIKeysWithCreator(ctx, teamID)
 	if err != nil {
 		zap.L().Warn("error when getting team API keys", zap.Error(err))
 		c.String(http.StatusInternalServerError, "Error when getting team API keys")
@@ -74,30 +77,21 @@ func (a *APIStore) GetApiKeys(c *gin.Context) {
 	teamAPIKeys := make([]api.TeamAPIKey, len(apiKeysDB))
 	for i, apiKey := range apiKeysDB {
 		var createdBy *api.TeamUser
-		if apiKey.Edges.Creator != nil {
+		if apiKey.CreatedByID != nil && apiKey.CreatedByEmail != nil {
 			createdBy = &api.TeamUser{
-				Email: apiKey.Edges.Creator.Email,
-				Id:    apiKey.Edges.Creator.ID,
+				Email: *apiKey.CreatedByEmail,
+				Id:    *apiKey.CreatedByID,
 			}
-		}
-
-		keyValue := strings.Split(apiKey.APIKey, keys.ApiKeyPrefix)[1]
-
-		// TODO: remove this once we migrate to hashed API keys
-		maskedKeyProperties, err := keys.MaskKey(keys.ApiKeyPrefix, keyValue)
-		if err != nil {
-			fmt.Printf("masking API key failed %d: %v", apiKey.ID, err)
-			continue
 		}
 
 		teamAPIKeys[i] = api.TeamAPIKey{
 			Id:   apiKey.ID,
 			Name: apiKey.Name,
 			Mask: api.IdentifierMaskingDetails{
-				Prefix:            maskedKeyProperties.Prefix,
-				ValueLength:       maskedKeyProperties.ValueLength,
-				MaskedValuePrefix: maskedKeyProperties.MaskedValuePrefix,
-				MaskedValueSuffix: maskedKeyProperties.MaskedValueSuffix,
+				Prefix:            apiKey.ApiKeyPrefix,
+				ValueLength:       int(apiKey.ApiKeyLength),
+				MaskedValuePrefix: apiKey.ApiKeyMaskPrefix,
+				MaskedValueSuffix: apiKey.ApiKeyMaskSuffix,
 			},
 			CreatedAt: apiKey.CreatedAt,
 			CreatedBy: createdBy,
@@ -170,7 +164,7 @@ func (a *APIStore) PostApiKeys(c *gin.Context) {
 	c.JSON(http.StatusCreated, api.CreatedTeamAPIKey{
 		Id:   apiKey.ID,
 		Name: apiKey.Name,
-		Key:  apiKey.APIKey,
+		Key:  apiKey.RawAPIKey,
 		Mask: api.IdentifierMaskingDetails{
 			Prefix:            apiKey.APIKeyPrefix,
 			ValueLength:       apiKey.APIKeyLength,

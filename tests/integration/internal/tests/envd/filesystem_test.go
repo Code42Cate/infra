@@ -88,10 +88,10 @@ func TestListDir(t *testing.T) {
 			setup.SetSandboxHeader(req.Header(), sbx.SandboxID)
 			setup.SetUserHeader(req.Header(), "user")
 			folderListResp, err := envdClient.FilesystemClient.ListDir(ctx, req)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.NotEmpty(t, folderListResp.Msg)
-			assert.Equal(t, len(tt.expectedPaths), len(folderListResp.Msg.Entries))
+			assert.Len(t, folderListResp.Msg.Entries, len(tt.expectedPaths))
 
 			actualPaths := make([]string, len(folderListResp.Msg.Entries))
 			for i, entry := range folderListResp.Msg.Entries {
@@ -123,7 +123,7 @@ func TestFilePermissions(t *testing.T) {
 		req,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer stream.Close()
 
@@ -144,7 +144,7 @@ func TestFilePermissions(t *testing.T) {
 }
 
 func TestStat(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	c := setup.GetAPIClient()
@@ -186,7 +186,7 @@ func TestStat(t *testing.T) {
 }
 
 func TestListDirFileEntry(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	c := setup.GetAPIClient()
@@ -232,7 +232,7 @@ func TestListDirFileEntry(t *testing.T) {
 }
 
 func TestListDirEntry(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	c := setup.GetAPIClient()
@@ -355,7 +355,7 @@ func TestRelativePath(t *testing.T) {
 	setup.SetSandboxHeader(req.Header(), sbx.SandboxID)
 	setup.SetUserHeader(req.Header(), "user")
 	folderListResp, err := envdClient.FilesystemClient.ListDir(ctx, req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	require.NotEmpty(t, folderListResp.Msg)
 	assert.Len(t, folderListResp.Msg.Entries, 1)

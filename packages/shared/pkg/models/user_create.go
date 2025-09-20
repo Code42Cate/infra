@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/accesstoken"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/env"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
@@ -98,6 +99,21 @@ func (uc *UserCreate) AddCreatedAPIKeys(t ...*TeamAPIKey) *UserCreate {
 		ids[i] = t[i].ID
 	}
 	return uc.AddCreatedAPIKeyIDs(ids...)
+}
+
+// AddCreatedSecretIDs adds the "created_secrets" edge to the Secret entity by IDs.
+func (uc *UserCreate) AddCreatedSecretIDs(ids ...uuid.UUID) *UserCreate {
+	uc.mutation.AddCreatedSecretIDs(ids...)
+	return uc
+}
+
+// AddCreatedSecrets adds the "created_secrets" edges to the Secret entity.
+func (uc *UserCreate) AddCreatedSecrets(s ...*Secret) *UserCreate {
+	ids := make([]uuid.UUID, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return uc.AddCreatedSecretIDs(ids...)
 }
 
 // AddUsersTeamIDs adds the "users_teams" edge to the UsersTeams entity by IDs.
@@ -265,6 +281,23 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			},
 		}
 		edge.Schema = uc.schemaConfig.TeamAPIKey
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.CreatedSecretsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedSecretsTable,
+			Columns: []string{user.CreatedSecretsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(secret.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = uc.schemaConfig.Secret
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}

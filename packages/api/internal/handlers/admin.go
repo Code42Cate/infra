@@ -18,8 +18,9 @@ func (a *APIStore) GetNodes(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func (a *APIStore) GetNodesNodeID(c *gin.Context, nodeId api.NodeID) {
-	result, err := a.orchestrator.AdminNodeDetail(nodeId)
+func (a *APIStore) GetNodesNodeID(c *gin.Context, nodeID api.NodeID, params api.GetNodesNodeIDParams) {
+	clusterID := utils.WithClusterFallback(params.ClusterID)
+	result, err := a.orchestrator.AdminNodeDetail(clusterID, nodeID)
 	if err != nil {
 		if errors.Is(err, orchestrator.ErrNodeNotFound) {
 			c.Status(http.StatusNotFound)
@@ -46,7 +47,8 @@ func (a *APIStore) PostNodesNodeID(c *gin.Context, nodeId api.NodeID) {
 		return
 	}
 
-	node := a.orchestrator.GetNodeByNomadShortID(nodeId)
+	clusterID := utils.WithClusterFallback(body.ClusterID)
+	node := a.orchestrator.GetNodeByIDOrNomadShortID(clusterID, nodeId)
 	if node == nil {
 		c.Status(http.StatusNotFound)
 		return

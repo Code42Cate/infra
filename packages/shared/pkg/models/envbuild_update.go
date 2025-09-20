@@ -80,12 +80,6 @@ func (ebu *EnvBuildUpdate) SetNillableEnvID(s *string) *EnvBuildUpdate {
 	return ebu
 }
 
-// ClearEnvID clears the value of the "env_id" field.
-func (ebu *EnvBuildUpdate) ClearEnvID() *EnvBuildUpdate {
-	ebu.mutation.ClearEnvID()
-	return ebu
-}
-
 // SetStatus sets the "status" field.
 func (ebu *EnvBuildUpdate) SetStatus(e envbuild.Status) *EnvBuildUpdate {
 	ebu.mutation.SetStatus(e)
@@ -312,21 +306,17 @@ func (ebu *EnvBuildUpdate) SetNillableClusterNodeID(s *string) *EnvBuildUpdate {
 	return ebu
 }
 
-// ClearClusterNodeID clears the value of the "cluster_node_id" field.
-func (ebu *EnvBuildUpdate) ClearClusterNodeID() *EnvBuildUpdate {
-	ebu.mutation.ClearClusterNodeID()
-	return ebu
-}
-
 // SetReason sets the "reason" field.
-func (ebu *EnvBuildUpdate) SetReason(sr *schema.BuildReason) *EnvBuildUpdate {
+func (ebu *EnvBuildUpdate) SetReason(sr schema.BuildReason) *EnvBuildUpdate {
 	ebu.mutation.SetReason(sr)
 	return ebu
 }
 
-// ClearReason clears the value of the "reason" field.
-func (ebu *EnvBuildUpdate) ClearReason() *EnvBuildUpdate {
-	ebu.mutation.ClearReason()
+// SetNillableReason sets the "reason" field if the given value is not nil.
+func (ebu *EnvBuildUpdate) SetNillableReason(sr *schema.BuildReason) *EnvBuildUpdate {
+	if sr != nil {
+		ebu.SetReason(*sr)
+	}
 	return ebu
 }
 
@@ -379,6 +369,9 @@ func (ebu *EnvBuildUpdate) check() error {
 		if err := envbuild.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`models: validator failed for field "EnvBuild.status": %w`, err)}
 		}
+	}
+	if _, ok := ebu.mutation.EnvID(); ebu.mutation.EnvCleared() && !ok {
+		return errors.New(`models: clearing a required unique edge "EnvBuild.env"`)
 	}
 	return nil
 }
@@ -473,14 +466,8 @@ func (ebu *EnvBuildUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := ebu.mutation.ClusterNodeID(); ok {
 		_spec.SetField(envbuild.FieldClusterNodeID, field.TypeString, value)
 	}
-	if ebu.mutation.ClusterNodeIDCleared() {
-		_spec.ClearField(envbuild.FieldClusterNodeID, field.TypeString)
-	}
 	if value, ok := ebu.mutation.Reason(); ok {
 		_spec.SetField(envbuild.FieldReason, field.TypeJSON, value)
-	}
-	if ebu.mutation.ReasonCleared() {
-		_spec.ClearField(envbuild.FieldReason, field.TypeJSON)
 	}
 	if ebu.mutation.EnvCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -582,12 +569,6 @@ func (ebuo *EnvBuildUpdateOne) SetNillableEnvID(s *string) *EnvBuildUpdateOne {
 	if s != nil {
 		ebuo.SetEnvID(*s)
 	}
-	return ebuo
-}
-
-// ClearEnvID clears the value of the "env_id" field.
-func (ebuo *EnvBuildUpdateOne) ClearEnvID() *EnvBuildUpdateOne {
-	ebuo.mutation.ClearEnvID()
 	return ebuo
 }
 
@@ -817,21 +798,17 @@ func (ebuo *EnvBuildUpdateOne) SetNillableClusterNodeID(s *string) *EnvBuildUpda
 	return ebuo
 }
 
-// ClearClusterNodeID clears the value of the "cluster_node_id" field.
-func (ebuo *EnvBuildUpdateOne) ClearClusterNodeID() *EnvBuildUpdateOne {
-	ebuo.mutation.ClearClusterNodeID()
-	return ebuo
-}
-
 // SetReason sets the "reason" field.
-func (ebuo *EnvBuildUpdateOne) SetReason(sr *schema.BuildReason) *EnvBuildUpdateOne {
+func (ebuo *EnvBuildUpdateOne) SetReason(sr schema.BuildReason) *EnvBuildUpdateOne {
 	ebuo.mutation.SetReason(sr)
 	return ebuo
 }
 
-// ClearReason clears the value of the "reason" field.
-func (ebuo *EnvBuildUpdateOne) ClearReason() *EnvBuildUpdateOne {
-	ebuo.mutation.ClearReason()
+// SetNillableReason sets the "reason" field if the given value is not nil.
+func (ebuo *EnvBuildUpdateOne) SetNillableReason(sr *schema.BuildReason) *EnvBuildUpdateOne {
+	if sr != nil {
+		ebuo.SetReason(*sr)
+	}
 	return ebuo
 }
 
@@ -897,6 +874,9 @@ func (ebuo *EnvBuildUpdateOne) check() error {
 		if err := envbuild.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`models: validator failed for field "EnvBuild.status": %w`, err)}
 		}
+	}
+	if _, ok := ebuo.mutation.EnvID(); ebuo.mutation.EnvCleared() && !ok {
+		return errors.New(`models: clearing a required unique edge "EnvBuild.env"`)
 	}
 	return nil
 }
@@ -1008,14 +988,8 @@ func (ebuo *EnvBuildUpdateOne) sqlSave(ctx context.Context) (_node *EnvBuild, er
 	if value, ok := ebuo.mutation.ClusterNodeID(); ok {
 		_spec.SetField(envbuild.FieldClusterNodeID, field.TypeString, value)
 	}
-	if ebuo.mutation.ClusterNodeIDCleared() {
-		_spec.ClearField(envbuild.FieldClusterNodeID, field.TypeString)
-	}
 	if value, ok := ebuo.mutation.Reason(); ok {
 		_spec.SetField(envbuild.FieldReason, field.TypeJSON, value)
-	}
-	if ebuo.mutation.ReasonCleared() {
-		_spec.ClearField(envbuild.FieldReason, field.TypeJSON)
 	}
 	if ebuo.mutation.EnvCleared() {
 		edge := &sqlgraph.EdgeSpec{

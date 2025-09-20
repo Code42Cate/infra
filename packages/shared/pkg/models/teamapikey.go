@@ -20,8 +20,6 @@ type TeamAPIKey struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
-	// APIKey holds the value of the "api_key" field.
-	APIKey string `json:"-"`
 	// APIKeyHash holds the value of the "api_key_hash" field.
 	APIKeyHash string `json:"-"`
 	// APIKeyPrefix holds the value of the "api_key_prefix" field.
@@ -56,9 +54,11 @@ type TeamAPIKeyEdges struct {
 	Team *Team `json:"team,omitempty"`
 	// Creator holds the value of the creator edge.
 	Creator *User `json:"creator,omitempty"`
+	// CreatedSecrets holds the value of the created_secrets edge.
+	CreatedSecrets []*Secret `json:"created_secrets,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // TeamOrErr returns the Team value or an error if the edge
@@ -87,6 +87,15 @@ func (e TeamAPIKeyEdges) CreatorOrErr() (*User, error) {
 	return nil, &NotLoadedError{edge: "creator"}
 }
 
+// CreatedSecretsOrErr returns the CreatedSecrets value or an error if the edge
+// was not loaded in eager-loading.
+func (e TeamAPIKeyEdges) CreatedSecretsOrErr() ([]*Secret, error) {
+	if e.loadedTypes[2] {
+		return e.CreatedSecrets, nil
+	}
+	return nil, &NotLoadedError{edge: "created_secrets"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*TeamAPIKey) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -96,7 +105,7 @@ func (*TeamAPIKey) scanValues(columns []string) ([]any, error) {
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case teamapikey.FieldAPIKeyLength:
 			values[i] = new(sql.NullInt64)
-		case teamapikey.FieldAPIKey, teamapikey.FieldAPIKeyHash, teamapikey.FieldAPIKeyPrefix, teamapikey.FieldAPIKeyMaskPrefix, teamapikey.FieldAPIKeyMaskSuffix, teamapikey.FieldName:
+		case teamapikey.FieldAPIKeyHash, teamapikey.FieldAPIKeyPrefix, teamapikey.FieldAPIKeyMaskPrefix, teamapikey.FieldAPIKeyMaskSuffix, teamapikey.FieldName:
 			values[i] = new(sql.NullString)
 		case teamapikey.FieldCreatedAt, teamapikey.FieldUpdatedAt, teamapikey.FieldLastUsed:
 			values[i] = new(sql.NullTime)
@@ -122,12 +131,6 @@ func (tak *TeamAPIKey) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
 				tak.ID = *value
-			}
-		case teamapikey.FieldAPIKey:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field api_key", values[i])
-			} else if value.Valid {
-				tak.APIKey = value.String
 			}
 		case teamapikey.FieldAPIKeyHash:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -221,6 +224,11 @@ func (tak *TeamAPIKey) QueryCreator() *UserQuery {
 	return NewTeamAPIKeyClient(tak.config).QueryCreator(tak)
 }
 
+// QueryCreatedSecrets queries the "created_secrets" edge of the TeamAPIKey entity.
+func (tak *TeamAPIKey) QueryCreatedSecrets() *SecretQuery {
+	return NewTeamAPIKeyClient(tak.config).QueryCreatedSecrets(tak)
+}
+
 // Update returns a builder for updating this TeamAPIKey.
 // Note that you need to call TeamAPIKey.Unwrap() before calling this method if this TeamAPIKey
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -244,8 +252,6 @@ func (tak *TeamAPIKey) String() string {
 	var builder strings.Builder
 	builder.WriteString("TeamAPIKey(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", tak.ID))
-	builder.WriteString("api_key=<sensitive>")
-	builder.WriteString(", ")
 	builder.WriteString("api_key_hash=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("api_key_prefix=")

@@ -14,6 +14,8 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/secret"
 	"github.com/e2b-dev/infra/packages/shared/pkg/models/team"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/teamapikey"
+	"github.com/e2b-dev/infra/packages/shared/pkg/models/user"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
@@ -86,6 +88,34 @@ func (sc *SecretCreate) SetAllowlist(pa pq.StringArray) *SecretCreate {
 	return sc
 }
 
+// SetCreatedByUser sets the "created_by_user" field.
+func (sc *SecretCreate) SetCreatedByUser(u uuid.UUID) *SecretCreate {
+	sc.mutation.SetCreatedByUser(u)
+	return sc
+}
+
+// SetNillableCreatedByUser sets the "created_by_user" field if the given value is not nil.
+func (sc *SecretCreate) SetNillableCreatedByUser(u *uuid.UUID) *SecretCreate {
+	if u != nil {
+		sc.SetCreatedByUser(*u)
+	}
+	return sc
+}
+
+// SetCreatedByAPIKey sets the "created_by_api_key" field.
+func (sc *SecretCreate) SetCreatedByAPIKey(u uuid.UUID) *SecretCreate {
+	sc.mutation.SetCreatedByAPIKey(u)
+	return sc
+}
+
+// SetNillableCreatedByAPIKey sets the "created_by_api_key" field if the given value is not nil.
+func (sc *SecretCreate) SetNillableCreatedByAPIKey(u *uuid.UUID) *SecretCreate {
+	if u != nil {
+		sc.SetCreatedByAPIKey(*u)
+	}
+	return sc
+}
+
 // SetID sets the "id" field.
 func (sc *SecretCreate) SetID(u uuid.UUID) *SecretCreate {
 	sc.mutation.SetID(u)
@@ -95,6 +125,44 @@ func (sc *SecretCreate) SetID(u uuid.UUID) *SecretCreate {
 // SetTeam sets the "team" edge to the Team entity.
 func (sc *SecretCreate) SetTeam(t *Team) *SecretCreate {
 	return sc.SetTeamID(t.ID)
+}
+
+// SetCreatorUserID sets the "creator_user" edge to the User entity by ID.
+func (sc *SecretCreate) SetCreatorUserID(id uuid.UUID) *SecretCreate {
+	sc.mutation.SetCreatorUserID(id)
+	return sc
+}
+
+// SetNillableCreatorUserID sets the "creator_user" edge to the User entity by ID if the given value is not nil.
+func (sc *SecretCreate) SetNillableCreatorUserID(id *uuid.UUID) *SecretCreate {
+	if id != nil {
+		sc = sc.SetCreatorUserID(*id)
+	}
+	return sc
+}
+
+// SetCreatorUser sets the "creator_user" edge to the User entity.
+func (sc *SecretCreate) SetCreatorUser(u *User) *SecretCreate {
+	return sc.SetCreatorUserID(u.ID)
+}
+
+// SetCreatorAPIKeyID sets the "creator_api_key" edge to the TeamAPIKey entity by ID.
+func (sc *SecretCreate) SetCreatorAPIKeyID(id uuid.UUID) *SecretCreate {
+	sc.mutation.SetCreatorAPIKeyID(id)
+	return sc
+}
+
+// SetNillableCreatorAPIKeyID sets the "creator_api_key" edge to the TeamAPIKey entity by ID if the given value is not nil.
+func (sc *SecretCreate) SetNillableCreatorAPIKeyID(id *uuid.UUID) *SecretCreate {
+	if id != nil {
+		sc = sc.SetCreatorAPIKeyID(*id)
+	}
+	return sc
+}
+
+// SetCreatorAPIKey sets the "creator_api_key" edge to the TeamAPIKey entity.
+func (sc *SecretCreate) SetCreatorAPIKey(t *TeamAPIKey) *SecretCreate {
+	return sc.SetCreatorAPIKeyID(t.ID)
 }
 
 // Mutation returns the SecretMutation object of the builder.
@@ -237,6 +305,42 @@ func (sc *SecretCreate) createSpec() (*Secret, *sqlgraph.CreateSpec) {
 		_node.TeamID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := sc.mutation.CreatorUserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorUserTable,
+			Columns: []string{secret.CreatorUserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = sc.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.CreatedByUser = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := sc.mutation.CreatorAPIKeyIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   secret.CreatorAPIKeyTable,
+			Columns: []string{secret.CreatorAPIKeyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(teamapikey.FieldID, field.TypeUUID),
+			},
+		}
+		edge.Schema = sc.schemaConfig.Secret
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.CreatedByAPIKey = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 
@@ -352,6 +456,42 @@ func (u *SecretUpsert) SetAllowlist(v pq.StringArray) *SecretUpsert {
 // UpdateAllowlist sets the "allowlist" field to the value that was provided on create.
 func (u *SecretUpsert) UpdateAllowlist() *SecretUpsert {
 	u.SetExcluded(secret.FieldAllowlist)
+	return u
+}
+
+// SetCreatedByUser sets the "created_by_user" field.
+func (u *SecretUpsert) SetCreatedByUser(v uuid.UUID) *SecretUpsert {
+	u.Set(secret.FieldCreatedByUser, v)
+	return u
+}
+
+// UpdateCreatedByUser sets the "created_by_user" field to the value that was provided on create.
+func (u *SecretUpsert) UpdateCreatedByUser() *SecretUpsert {
+	u.SetExcluded(secret.FieldCreatedByUser)
+	return u
+}
+
+// ClearCreatedByUser clears the value of the "created_by_user" field.
+func (u *SecretUpsert) ClearCreatedByUser() *SecretUpsert {
+	u.SetNull(secret.FieldCreatedByUser)
+	return u
+}
+
+// SetCreatedByAPIKey sets the "created_by_api_key" field.
+func (u *SecretUpsert) SetCreatedByAPIKey(v uuid.UUID) *SecretUpsert {
+	u.Set(secret.FieldCreatedByAPIKey, v)
+	return u
+}
+
+// UpdateCreatedByAPIKey sets the "created_by_api_key" field to the value that was provided on create.
+func (u *SecretUpsert) UpdateCreatedByAPIKey() *SecretUpsert {
+	u.SetExcluded(secret.FieldCreatedByAPIKey)
+	return u
+}
+
+// ClearCreatedByAPIKey clears the value of the "created_by_api_key" field.
+func (u *SecretUpsert) ClearCreatedByAPIKey() *SecretUpsert {
+	u.SetNull(secret.FieldCreatedByAPIKey)
 	return u
 }
 
@@ -480,6 +620,48 @@ func (u *SecretUpsertOne) SetAllowlist(v pq.StringArray) *SecretUpsertOne {
 func (u *SecretUpsertOne) UpdateAllowlist() *SecretUpsertOne {
 	return u.Update(func(s *SecretUpsert) {
 		s.UpdateAllowlist()
+	})
+}
+
+// SetCreatedByUser sets the "created_by_user" field.
+func (u *SecretUpsertOne) SetCreatedByUser(v uuid.UUID) *SecretUpsertOne {
+	return u.Update(func(s *SecretUpsert) {
+		s.SetCreatedByUser(v)
+	})
+}
+
+// UpdateCreatedByUser sets the "created_by_user" field to the value that was provided on create.
+func (u *SecretUpsertOne) UpdateCreatedByUser() *SecretUpsertOne {
+	return u.Update(func(s *SecretUpsert) {
+		s.UpdateCreatedByUser()
+	})
+}
+
+// ClearCreatedByUser clears the value of the "created_by_user" field.
+func (u *SecretUpsertOne) ClearCreatedByUser() *SecretUpsertOne {
+	return u.Update(func(s *SecretUpsert) {
+		s.ClearCreatedByUser()
+	})
+}
+
+// SetCreatedByAPIKey sets the "created_by_api_key" field.
+func (u *SecretUpsertOne) SetCreatedByAPIKey(v uuid.UUID) *SecretUpsertOne {
+	return u.Update(func(s *SecretUpsert) {
+		s.SetCreatedByAPIKey(v)
+	})
+}
+
+// UpdateCreatedByAPIKey sets the "created_by_api_key" field to the value that was provided on create.
+func (u *SecretUpsertOne) UpdateCreatedByAPIKey() *SecretUpsertOne {
+	return u.Update(func(s *SecretUpsert) {
+		s.UpdateCreatedByAPIKey()
+	})
+}
+
+// ClearCreatedByAPIKey clears the value of the "created_by_api_key" field.
+func (u *SecretUpsertOne) ClearCreatedByAPIKey() *SecretUpsertOne {
+	return u.Update(func(s *SecretUpsert) {
+		s.ClearCreatedByAPIKey()
 	})
 }
 
@@ -775,6 +957,48 @@ func (u *SecretUpsertBulk) SetAllowlist(v pq.StringArray) *SecretUpsertBulk {
 func (u *SecretUpsertBulk) UpdateAllowlist() *SecretUpsertBulk {
 	return u.Update(func(s *SecretUpsert) {
 		s.UpdateAllowlist()
+	})
+}
+
+// SetCreatedByUser sets the "created_by_user" field.
+func (u *SecretUpsertBulk) SetCreatedByUser(v uuid.UUID) *SecretUpsertBulk {
+	return u.Update(func(s *SecretUpsert) {
+		s.SetCreatedByUser(v)
+	})
+}
+
+// UpdateCreatedByUser sets the "created_by_user" field to the value that was provided on create.
+func (u *SecretUpsertBulk) UpdateCreatedByUser() *SecretUpsertBulk {
+	return u.Update(func(s *SecretUpsert) {
+		s.UpdateCreatedByUser()
+	})
+}
+
+// ClearCreatedByUser clears the value of the "created_by_user" field.
+func (u *SecretUpsertBulk) ClearCreatedByUser() *SecretUpsertBulk {
+	return u.Update(func(s *SecretUpsert) {
+		s.ClearCreatedByUser()
+	})
+}
+
+// SetCreatedByAPIKey sets the "created_by_api_key" field.
+func (u *SecretUpsertBulk) SetCreatedByAPIKey(v uuid.UUID) *SecretUpsertBulk {
+	return u.Update(func(s *SecretUpsert) {
+		s.SetCreatedByAPIKey(v)
+	})
+}
+
+// UpdateCreatedByAPIKey sets the "created_by_api_key" field to the value that was provided on create.
+func (u *SecretUpsertBulk) UpdateCreatedByAPIKey() *SecretUpsertBulk {
+	return u.Update(func(s *SecretUpsert) {
+		s.UpdateCreatedByAPIKey()
+	})
+}
+
+// ClearCreatedByAPIKey clears the value of the "created_by_api_key" field.
+func (u *SecretUpsertBulk) ClearCreatedByAPIKey() *SecretUpsertBulk {
+	return u.Update(func(s *SecretUpsert) {
+		s.ClearCreatedByAPIKey()
 	})
 }
 

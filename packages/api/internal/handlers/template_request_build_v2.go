@@ -40,13 +40,13 @@ func (a *APIStore) PostV2Templates(c *gin.Context) {
 	}
 
 	// Create the build, find the template ID by alias or generate a new one
-	_, span := a.Tracer.Start(ctx, "find-template-alias")
+	_, span := tracer.Start(ctx, "find-template-alias")
 	defer span.End()
 	templateID := id.Generate()
 	isNew := true
 	templateAlias, err := a.sqlcDB.GetTemplateAliasByAlias(ctx, body.Alias)
 	if err != nil {
-		var notFoundErr db.ErrNotFound
+		var notFoundErr db.NotFoundError
 		if !errors.As(err, &notFoundErr) {
 			a.sendAPIStoreError(c, http.StatusInternalServerError, fmt.Sprintf("Error when getting template alias: %s", err))
 			telemetry.ReportCriticalError(ctx, "error when getting template alias", err)
@@ -58,7 +58,7 @@ func (a *APIStore) PostV2Templates(c *gin.Context) {
 	}
 	span.End()
 
-	builderNodeID, err := a.templateManager.GetAvailableBuildClient(ctx, team.ClusterID)
+	builderNodeID, err := a.templateManager.GetAvailableBuildClient(ctx, apiutils.WithClusterFallback(team.ClusterID))
 	if err != nil {
 		a.sendAPIStoreError(c, http.StatusInternalServerError, "Error when getting available build client")
 		telemetry.ReportCriticalError(ctx, "error when getting available build client", err, telemetry.WithTemplateID(templateID))
@@ -66,7 +66,7 @@ func (a *APIStore) PostV2Templates(c *gin.Context) {
 	}
 
 	buildReq := BuildTemplateRequest{
-		ClusterID:     team.ClusterID,
+		ClusterID:     apiutils.WithClusterFallback(team.ClusterID),
 		BuilderNodeID: builderNodeID,
 		IsNew:         isNew,
 		TemplateID:    templateID,
@@ -85,7 +85,7 @@ func (a *APIStore) PostV2Templates(c *gin.Context) {
 		return
 	}
 
-	_, span = a.Tracer.Start(ctx, "posthog-analytics")
+	_, span = tracer.Start(ctx, "posthog-analytics")
 	defer span.End()
 	properties := a.posthog.GetPackageToPosthogProperties(&c.Request.Header)
 	a.posthog.IdentifyAnalyticsTeam(team.ID.String(), team.Name)
@@ -109,7 +109,7 @@ func (a *APIStore) GetTeamAndTier(
 	// Deprecated: use API Token authentication instead.
 	teamID *string,
 ) (*queries.Team, *queries.Tier, *api.APIError) {
-	_, span := a.Tracer.Start(c.Request.Context(), "get-team-and-tier")
+	_, span := tracer.Start(c.Request.Context(), "get-team-and-tier")
 	defer span.End()
 
 	if c.Value(auth.TeamContextKey) != nil {

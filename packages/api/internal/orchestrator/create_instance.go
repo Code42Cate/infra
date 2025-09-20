@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
@@ -19,6 +18,7 @@ import (
 	"github.com/e2b-dev/infra/packages/api/internal/orchestrator/nodemanager"
 	"github.com/e2b-dev/infra/packages/api/internal/orchestrator/placement"
 	"github.com/e2b-dev/infra/packages/api/internal/sandbox"
+	"github.com/e2b-dev/infra/packages/api/internal/utils"
 	"github.com/e2b-dev/infra/packages/db/queries"
 	"github.com/e2b-dev/infra/packages/shared/pkg/consts"
 	"github.com/e2b-dev/infra/packages/shared/pkg/grpc/orchestrator"
@@ -47,14 +47,14 @@ func (o *Orchestrator) CreateSandbox(
 	allowSecrets *bool,
 	allowInternetAccess *bool,
 ) (*api.Sandbox, *api.APIError) {
-	ctx, childSpan := o.tracer.Start(ctx, "create-sandbox")
+	ctx, childSpan := tracer.Start(ctx, "create-sandbox")
 	defer childSpan.End()
 
 	// Check if team has reached max instances
-	releaseTeamSandboxReservation, err := o.instanceCache.Reserve(sandboxID, team.Team.ID, team.Tier.ConcurrentInstances)
+	releaseTeamSandboxReservation, err := o.sandboxStore.Reserve(sandboxID, team.Team.ID, team.Tier.ConcurrentInstances)
 	if err != nil {
-		var limitErr *instance.ErrSandboxLimitExceeded
-		var alreadyErr *instance.ErrAlreadyBeingStarted
+		var limitErr *instance.SandboxLimitExceededError
+		var alreadyErr *instance.AlreadyBeingStartedError
 
 		telemetry.ReportCriticalError(ctx, "failed to reserve sandbox for team", err)
 
@@ -117,7 +117,7 @@ func (o *Orchestrator) CreateSandbox(
 	sbxRequest := &orchestrator.SandboxCreateRequest{
 		Sandbox: &orchestrator.SandboxConfig{
 			BaseTemplateId:      baseTemplateID,
-			TemplateId:          *build.EnvID,
+			TemplateId:          build.EnvID,
 			Alias:               &alias,
 			TeamId:              team.Team.ID.String(),
 			BuildId:             build.ID.String(),
@@ -148,25 +148,18 @@ func (o *Orchestrator) CreateSandbox(
 	if isResume && nodeID != nil {
 		telemetry.ReportEvent(ctx, "Placing sandbox on the node where the snapshot was taken")
 
-		clusterID := uuid.Nil
-		if team.Team.ClusterID != nil {
-			clusterID = *team.Team.ClusterID
-		}
-
+		clusterID := utils.WithClusterFallback(team.Team.ClusterID)
 		node = o.GetNode(clusterID, *nodeID)
 		if node != nil && node.Status() != api.NodeStatusReady {
 			node = nil
 		}
 	}
 
-	nodeClusterID := uuid.Nil
-	if team.Team.ClusterID != nil {
-		nodeClusterID = *team.Team.ClusterID
-	}
-
+	nodeClusterID := utils.WithClusterFallback(team.Team.ClusterID)
 	clusterNodes := o.GetClusterNodes(nodeClusterID)
-	ctx, span := o.tracer.Start(ctx, "place-sandbox")
-	node, err = placement.PlaceSandbox(ctx, o.tracer, o.placementAlgorithm, clusterNodes, node, sbxRequest)
+
+	algorithm := o.getPlacementAlgorithm(ctx)
+	node, err = placement.PlaceSandbox(ctx, algorithm, clusterNodes, node, sbxRequest)
 	if err != nil {
 		telemetry.ReportError(ctx, "failed to create sandbox", err)
 
@@ -176,7 +169,6 @@ func (o *Orchestrator) CreateSandbox(
 			Err:       fmt.Errorf("failed to get create sandbox: %w", err),
 		}
 	}
-	span.End()
 
 	// The sandbox was created successfully
 	attributes := []attribute.KeyValue{
@@ -195,7 +187,7 @@ func (o *Orchestrator) CreateSandbox(
 	sbx := api.Sandbox{
 		ClientID:        consts.ClientID,
 		SandboxID:       sandboxID,
-		TemplateID:      *build.EnvID,
+		TemplateID:      build.EnvID,
 		Alias:           &alias,
 		EnvdVersion:     *build.EnvdVersion,
 		EnvdAccessToken: envdAuthToken,
@@ -233,13 +225,13 @@ func (o *Orchestrator) CreateSandbox(
 		baseTemplateID,
 	)
 
-	cacheErr := o.instanceCache.Add(ctx, instanceInfo, true)
+	cacheErr := o.sandboxStore.Add(ctx, instanceInfo, true)
 	if cacheErr != nil {
 		telemetry.ReportError(ctx, "error when adding instance to cache", cacheErr)
 
-		deleted := o.DeleteInstance(ctx, sbx.SandboxID, false)
-		if !deleted {
-			telemetry.ReportEvent(ctx, "instance wasn't found in cache when deleting")
+		err := o.RemoveInstance(ctx, instanceInfo, instance.RemoveTypeKill)
+		if err != nil {
+			telemetry.ReportError(ctx, "Error while removing sandbox error after cache error", err)
 		}
 
 		return nil, &api.APIError{

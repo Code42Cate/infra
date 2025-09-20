@@ -6,9 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 )
+
+var tracer = otel.Tracer("github.com/e2b-dev/infra/packages/shared/pkg/synchronization")
 
 type Store[SourceItem any, PoolItem any] interface {
 	SourceList(ctx context.Context) ([]SourceItem, error)
@@ -26,7 +28,6 @@ type Store[SourceItem any, PoolItem any] interface {
 type Synchronize[SourceItem any, PoolItem any] struct {
 	store Store[SourceItem, PoolItem]
 
-	tracer           trace.Tracer
 	tracerSpanPrefix string
 	logsPrefix       string
 
@@ -34,9 +35,8 @@ type Synchronize[SourceItem any, PoolItem any] struct {
 	cancelOnce sync.Once
 }
 
-func NewSynchronize[SourceItem any, PoolItem any](tracer trace.Tracer, spanPrefix string, logsPrefix string, store Store[SourceItem, PoolItem]) *Synchronize[SourceItem, PoolItem] {
+func NewSynchronize[SourceItem any, PoolItem any](spanPrefix string, logsPrefix string, store Store[SourceItem, PoolItem]) *Synchronize[SourceItem, PoolItem] {
 	s := &Synchronize[SourceItem, PoolItem]{
-		tracer:           tracer,
 		tracerSpanPrefix: spanPrefix,
 		logsPrefix:       logsPrefix,
 		store:            store,
@@ -82,7 +82,7 @@ func (s *Synchronize[SourceItem, PoolItem]) Close() {
 }
 
 func (s *Synchronize[SourceItem, PoolItem]) sync(ctx context.Context) error {
-	spanCtx, span := s.tracer.Start(ctx, s.getSpanName("sync-items"))
+	spanCtx, span := tracer.Start(ctx, s.getSpanName("sync-items"))
 	defer span.End()
 
 	sourceItems, err := s.store.SourceList(ctx)
@@ -97,45 +97,47 @@ func (s *Synchronize[SourceItem, PoolItem]) sync(ctx context.Context) error {
 }
 
 func (s *Synchronize[SourceItem, PoolItem]) syncDiscovered(ctx context.Context, sourceItems []SourceItem) {
-	spanCtx, span := s.tracer.Start(ctx, s.getSpanName("sync-discovered-items"))
+	spanCtx, span := tracer.Start(ctx, s.getSpanName("sync-discovered-items"))
 	defer span.End()
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
 	for _, item := range sourceItems {
-		// item already exists in the pool, skip it
-		if ok := s.store.PoolExists(ctx, item); ok {
-			continue
-		}
-
 		// initialize newly discovered item
 		wg.Add(1)
 		go func(item SourceItem) {
 			defer wg.Done()
+
+			// item already exists in the pool, skip it
+			if ok := s.store.PoolExists(ctx, item); ok {
+				return
+			}
+
 			s.store.PoolInsert(spanCtx, item)
 		}(item)
 	}
 }
 
 func (s *Synchronize[SourceItem, PoolItem]) syncOutdated(ctx context.Context, sourceItems []SourceItem) {
-	spanCtx, span := s.tracer.Start(ctx, s.getSpanName("sync-outdated-items"))
+	spanCtx, span := tracer.Start(ctx, s.getSpanName("sync-outdated-items"))
 	defer span.End()
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
 	for _, poolItem := range s.store.PoolList(ctx) {
-		found := s.store.SourceExists(ctx, sourceItems, poolItem)
-		if found {
-			s.store.PoolUpdate(ctx, poolItem)
-			continue
-		}
-
 		// remove the item that is no longer present in the source
 		wg.Add(1)
 		go func(poolItem PoolItem) {
 			defer wg.Done()
+
+			found := s.store.SourceExists(ctx, sourceItems, poolItem)
+			if found {
+				s.store.PoolUpdate(ctx, poolItem)
+				return
+			}
+
 			s.store.PoolRemove(spanCtx, poolItem)
 		}(poolItem)
 	}

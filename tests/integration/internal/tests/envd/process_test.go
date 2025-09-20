@@ -87,7 +87,7 @@ func TestCommandKillNextApp(t *testing.T) {
 	finalListResp, err := envdClient.ProcessClient.List(ctx, listReq)
 	require.NoError(t, err)
 
-	assert.Len(t, finalListResp.Msg.Processes, 0, "Expected no processes running")
+	assert.Empty(t, finalListResp.Msg.Processes, "Expected no processes running")
 	for _, proc := range finalListResp.Msg.Processes {
 		t.Errorf("remaining process: PID=%d CMD=%s", proc.Pid, proc.Config.Cmd)
 	}
@@ -163,7 +163,7 @@ func TestCommandKillWithAnd(t *testing.T) {
 	finalListResp, err := envdClient.ProcessClient.List(ctx, listReq)
 	require.NoError(t, err)
 
-	assert.Len(t, finalListResp.Msg.Processes, 0, "Expected no processes running")
+	assert.Empty(t, finalListResp.Msg.Processes, "Expected no processes running")
 	for _, proc := range finalListResp.Msg.Processes {
 		t.Errorf("remaining process: PID=%d CMD=%s", proc.Pid, proc.Config.Cmd)
 	}
@@ -177,6 +177,8 @@ func killPid(
 	sandboxID string,
 	pid uint32,
 ) {
+	t.Helper()
+
 	// Connect to the process
 	connectReq := connect.NewRequest(&process.ConnectRequest{
 		Process: &process.ProcessSelector{
@@ -188,7 +190,7 @@ func killPid(
 	setup.SetSandboxHeader(connectReq.Header(), sandboxID)
 	setup.SetUserHeader(connectReq.Header(), "user")
 	connectResp, err := envdClient.ProcessClient.Connect(ctx, connectReq)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Send SIGKILL to the process (doesn't await the termination)
 	killReq := connect.NewRequest(&process.SendSignalRequest{
@@ -202,7 +204,7 @@ func killPid(
 	setup.SetSandboxHeader(killReq.Header(), sandboxID)
 	setup.SetUserHeader(killReq.Header(), "user")
 	_, err = envdClient.ProcessClient.SendSignal(ctx, killReq)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Wait for the process to terminate
 	for connectResp.Receive() {
@@ -253,4 +255,15 @@ func TestWorkdirPermissionDenied(t *testing.T) {
 
 	err = utils.ExecCommandWithCwd(t, ctx, sbx, envdClient, &restrictedDir, "/bin/bash", "-c", "pwd")
 	require.Error(t, err, "Should fail when trying to use restricted directory as working directory")
+}
+
+func TestStdinCantRead(t *testing.T) {
+	client := setup.GetAPIClient()
+	sbx := utils.SetupSandboxWithCleanup(t, client, utils.WithTimeout(120))
+
+	envdClient := setup.GetEnvdClient(t, t.Context())
+
+	err := utils.ExecCommandAsRoot(t, t.Context(), sbx, envdClient, "/bin/bash", "-c", "read -p 'Enter your name: '")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "exit code 1")
 }

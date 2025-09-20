@@ -2,6 +2,7 @@ package edgepassthrough
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	"google.golang.org/grpc"
@@ -22,8 +23,7 @@ type NodePassThroughServer struct {
 	nodes   *e2borchestrators.OrchestratorsPool
 	catalog sandboxes.SandboxesCatalog
 
-	info   *e2binfo.ServiceInfo
-	server *grpc.Server
+	info *e2binfo.ServiceInfo
 
 	authorization authorization.AuthorizationService
 }
@@ -91,7 +91,7 @@ func (s *NodePassThroughServer) director(ctx context.Context) (*grpc.ClientConn,
 //
 // Core implementation is just following methods that are handling forwarding, proper closing and propagating of errors from both sides of the stream.
 // The handler is called for every request that is not handled by any other gRPC service.
-func (s *NodePassThroughServer) handler(srv interface{}, serverStream grpc.ServerStream) (err error) {
+func (s *NodePassThroughServer) handler(srv any, serverStream grpc.ServerStream) (err error) {
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
 	if !ok {
 		return status.Errorf(codes.Internal, "low lever server stream not exists in context")
@@ -139,10 +139,10 @@ func (s *NodePassThroughServer) handler(srv interface{}, serverStream grpc.Serve
 	c2sErrChan := s.forwardClientToServer(clientStream, serverStream)
 
 	// We don't know which side is going to stop sending first, so we need a select between the two.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case s2cErr := <-s2cErrChan:
-			if s2cErr == io.EOF {
+			if errors.Is(s2cErr, io.EOF) {
 				// this is the happy case where the sender has encountered io.EOF, and won't be sending anymore./
 				// the clientStream>serverStream may continue pumping though.
 				clientStream.CloseSend()
@@ -159,7 +159,7 @@ func (s *NodePassThroughServer) handler(srv interface{}, serverStream grpc.Serve
 			// will be nil.
 			serverStream.SetTrailer(clientStream.Trailer())
 			// c2sErr will contain RPC error from client code. If not io.EOF return the RPC error as server stream error.
-			if c2sErr != io.EOF {
+			if !errors.Is(c2sErr, io.EOF) {
 				return c2sErr
 			}
 			return nil

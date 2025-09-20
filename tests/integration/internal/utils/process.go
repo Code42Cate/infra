@@ -13,27 +13,36 @@ import (
 )
 
 func ExecCommand(tb testing.TB, ctx context.Context, sbx *api.Sandbox, envdClient *setup.EnvdClient, command string, args ...string) error {
+	tb.Helper()
+
 	return ExecCommandWithOptions(tb, ctx, sbx, envdClient, nil, "user", command, args...)
 }
 
 func ExecCommandWithCwd(tb testing.TB, ctx context.Context, sbx *api.Sandbox, envdClient *setup.EnvdClient, cwd *string, command string, args ...string) error {
+	tb.Helper()
+
 	return ExecCommandWithOptions(tb, ctx, sbx, envdClient, cwd, "user", command, args...)
 }
 
 func ExecCommandAsRoot(tb testing.TB, ctx context.Context, sbx *api.Sandbox, envdClient *setup.EnvdClient, command string, args ...string) error {
+	tb.Helper()
+
 	return ExecCommandWithOptions(tb, ctx, sbx, envdClient, nil, "root", command, args...)
 }
 
 func ExecCommandWithOptions(tb testing.TB, ctx context.Context, sbx *api.Sandbox, envdClient *setup.EnvdClient, cwd *string, user string, command string, args ...string) error {
 	tb.Helper()
 
+	f := false
 	req := connect.NewRequest(&process.StartRequest{
 		Process: &process.ProcessConfig{
 			Cmd:  command,
 			Args: args,
 			Cwd:  cwd,
 		},
+		Stdin: &f,
 	})
+
 	setup.SetSandboxHeader(req.Header(), sbx.SandboxID)
 	setup.SetUserHeader(req.Header(), user)
 	ctx, cancel := context.WithCancel(ctx)

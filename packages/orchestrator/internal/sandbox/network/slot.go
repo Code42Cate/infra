@@ -9,12 +9,16 @@ import (
 	"sync/atomic"
 
 	"github.com/containernetworking/plugins/pkg/ns"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	netutils "k8s.io/utils/net"
 
+	"github.com/e2b-dev/infra/packages/orchestrator/internal"
 	"github.com/e2b-dev/infra/packages/shared/pkg/env"
 )
+
+var tracer = otel.Tracer("github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/network")
 
 const (
 	defaultHostNetworkCIDR = "10.11.0.0/16"
@@ -74,6 +78,8 @@ type Slot struct {
 	hostIp   net.IP
 	hostNet  *net.IPNet
 	hostCIDR string
+
+	hyperloopIP string
 }
 
 func NewSlot(key string, idx int) (*Slot, error) {
@@ -132,6 +138,8 @@ func NewSlot(key string, idx int) (*Slot, error) {
 		hostIp:   hostIp,
 		hostNet:  hostNet,
 		hostCIDR: hostCIDR,
+
+		hyperloopIP: internal.GetHyperloopIP(),
 	}
 
 	return slot, nil
@@ -163,6 +171,10 @@ func (s *Slot) HostIP() net.IP {
 
 func (s *Slot) HostIPString() string {
 	return s.HostIP().String()
+}
+
+func (s *Slot) HyperloopIPString() string {
+	return s.hyperloopIP
 }
 
 func (s *Slot) HostMask() net.IPMask {
@@ -249,7 +261,7 @@ func (s *Slot) CloseFirewall() error {
 	return nil
 }
 
-func (s *Slot) ConfigureInternet(ctx context.Context, tracer trace.Tracer, allowInternet bool) (e error) {
+func (s *Slot) ConfigureInternet(ctx context.Context, allowInternet bool) (e error) {
 	_, span := tracer.Start(ctx, "slot-internet-configure", trace.WithAttributes(
 		attribute.String("namespace_id", s.NamespaceID()),
 		attribute.Bool("allow_internet", allowInternet),
@@ -284,7 +296,7 @@ func (s *Slot) ConfigureInternet(ctx context.Context, tracer trace.Tracer, allow
 	return nil
 }
 
-func (s *Slot) ResetInternet(ctx context.Context, tracer trace.Tracer) error {
+func (s *Slot) ResetInternet(ctx context.Context) error {
 	_, span := tracer.Start(ctx, "slot-internet-reset", trace.WithAttributes(
 		attribute.String("namespace_id", s.NamespaceID()),
 	))

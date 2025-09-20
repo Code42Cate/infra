@@ -22,7 +22,9 @@ import (
 )
 
 func waitForStatus(t *testing.T, client *http.Client, sbx *api.Sandbox, url *url.URL, port int, headers *http.Header, expectedStatus int) *http.Response {
-	for i := 0; i < 10; i++ {
+	t.Helper()
+
+	for range 10 {
 		req := utils.NewRequest(sbx, url, port, headers)
 		resp, err := client.Do(req)
 		if err != nil {
@@ -137,8 +139,8 @@ func TestSandboxProxyClosedPort(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 
 	assert.True(t, strings.HasPrefix(string(body), "<html"))
-	assert.True(t, strings.Contains(string(body), "no service running on port"))
-	assert.True(t, strings.Contains(string(body), sbx.SandboxID))
-	assert.True(t, strings.Contains(string(body), fmt.Sprintf("%d", port)))
+	assert.Contains(t, string(body), "no service running on port")
+	assert.Contains(t, string(body), sbx.SandboxID)
+	assert.Contains(t, string(body), fmt.Sprintf("%d", port))
 	assert.True(t, strings.HasSuffix(string(body), "</html>"))
 }

@@ -14,8 +14,6 @@ const (
 	Label = "team_api_key"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldAPIKey holds the string denoting the api_key field in the database.
-	FieldAPIKey = "api_key"
 	// FieldAPIKeyHash holds the string denoting the api_key_hash field in the database.
 	FieldAPIKeyHash = "api_key_hash"
 	// FieldAPIKeyPrefix holds the string denoting the api_key_prefix field in the database.
@@ -42,6 +40,8 @@ const (
 	EdgeTeam = "team"
 	// EdgeCreator holds the string denoting the creator edge name in mutations.
 	EdgeCreator = "creator"
+	// EdgeCreatedSecrets holds the string denoting the created_secrets edge name in mutations.
+	EdgeCreatedSecrets = "created_secrets"
 	// Table holds the table name of the teamapikey in the database.
 	Table = "team_api_keys"
 	// TeamTable is the table that holds the team relation/edge.
@@ -58,12 +58,18 @@ const (
 	CreatorInverseTable = "users"
 	// CreatorColumn is the table column denoting the creator relation/edge.
 	CreatorColumn = "created_by"
+	// CreatedSecretsTable is the table that holds the created_secrets relation/edge.
+	CreatedSecretsTable = "secrets"
+	// CreatedSecretsInverseTable is the table name for the Secret entity.
+	// It exists in this package in order to avoid circular dependency with the "secret" package.
+	CreatedSecretsInverseTable = "secrets"
+	// CreatedSecretsColumn is the table column denoting the created_secrets relation/edge.
+	CreatedSecretsColumn = "created_by_api_key"
 )
 
 // Columns holds all SQL columns for teamapikey fields.
 var Columns = []string{
 	FieldID,
-	FieldAPIKey,
 	FieldAPIKeyHash,
 	FieldAPIKeyPrefix,
 	FieldAPIKeyLength,
@@ -100,11 +106,6 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
-}
-
-// ByAPIKey orders the results by the api_key field.
-func ByAPIKey(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAPIKey, opts...).ToFunc()
 }
 
 // ByAPIKeyHash orders the results by the api_key_hash field.
@@ -175,6 +176,20 @@ func ByCreatorField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newCreatorStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByCreatedSecretsCount orders the results by created_secrets count.
+func ByCreatedSecretsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCreatedSecretsStep(), opts...)
+	}
+}
+
+// ByCreatedSecrets orders the results by created_secrets terms.
+func ByCreatedSecrets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCreatedSecretsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newTeamStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -187,5 +202,12 @@ func newCreatorStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CreatorInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, CreatorTable, CreatorColumn),
+	)
+}
+func newCreatedSecretsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CreatedSecretsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, CreatedSecretsTable, CreatedSecretsColumn),
 	)
 }

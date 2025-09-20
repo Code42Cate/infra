@@ -6,21 +6,21 @@ import (
 	"maps"
 	"strings"
 
-	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/proxy"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/sandboxtools"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/writer"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/metadata"
 	templatemanager "github.com/e2b-dev/infra/packages/shared/pkg/grpc/template-manager"
 )
 
 type Env struct{}
 
+var _ Command = (*Env)(nil)
+
 func (e *Env) Execute(
 	ctx context.Context,
-	tracer trace.Tracer,
-	postProcessor *writer.PostProcessor,
+	logger *zap.Logger,
 	proxy *proxy.SandboxProxy,
 	sandboxID string,
 	prefix string,
@@ -41,7 +41,7 @@ func (e *Env) Execute(
 	envVars := maps.Clone(cmdMetadata.EnvVars)
 	for i := 0; i < len(args)-1; i += 2 {
 		k := args[i]
-		v, err := evaluateValue(ctx, tracer, proxy, sandboxID, args[i+1])
+		v, err := evaluateValue(ctx, proxy, sandboxID, args[i+1])
 		if err != nil {
 			return metadata.Context{}, fmt.Errorf("failed to evaluate environment variable %s: %w", k, err)
 		}
@@ -55,14 +55,12 @@ func (e *Env) Execute(
 
 func evaluateValue(
 	ctx context.Context,
-	tracer trace.Tracer,
 	proxy *proxy.SandboxProxy,
 	sandboxID string,
 	envValue string,
 ) (string, error) {
 	err := sandboxtools.RunCommandWithOutput(
 		ctx,
-		tracer,
 		proxy,
 		sandboxID,
 		fmt.Sprintf(`printf "%s"`, envValue),

@@ -13,18 +13,21 @@ import (
 )
 
 type AccessToken struct {
-	AccessToken string
-	UserID      uuid.UUID
-	CreatedAt   time.Time
-	ID          *uuid.UUID
+	UserID    uuid.UUID
+	CreatedAt time.Time
+	ID        uuid.UUID
 	// sensitive
-	AccessTokenHash       *string
-	AccessTokenMask       *string
+	AccessTokenHash       string
 	Name                  string
-	AccessTokenPrefix     *string
-	AccessTokenLength     *int32
-	AccessTokenMaskPrefix *string
-	AccessTokenMaskSuffix *string
+	AccessTokenPrefix     string
+	AccessTokenLength     int32
+	AccessTokenMaskPrefix string
+	AccessTokenMaskSuffix string
+}
+
+type AuthUser struct {
+	ID    uuid.UUID
+	Email string
 }
 
 type Cluster struct {
@@ -70,11 +73,23 @@ type EnvBuild struct {
 	TotalDiskSizeMb    *int64
 	KernelVersion      string
 	FirecrackerVersion string
-	EnvID              *string
+	EnvID              string
 	EnvdVersion        *string
 	ReadyCmd           *string
-	ClusterNodeID      *string
-	Reason             types.JSONBStringMap
+	ClusterNodeID      string
+	Reason             types.BuildReason
+}
+
+type Secret struct {
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       *time.Time
+	TeamID          uuid.UUID
+	Label           string
+	Description     string
+	Allowlist       []string
+	CreatedByUser   *uuid.UUID
+	CreatedByApiKey *uuid.UUID
 }
 
 type Snapshot struct {
@@ -86,7 +101,7 @@ type Snapshot struct {
 	BaseEnvID           string
 	SandboxStartedAt    pgtype.Timestamptz
 	EnvSecure           bool
-	OriginNodeID        *string
+	OriginNodeID        string
 	AllowInternetAccess *bool
 	AutoPause           bool
 }
@@ -104,7 +119,6 @@ type Team struct {
 }
 
 type TeamApiKey struct {
-	ApiKey    string
 	CreatedAt time.Time
 	TeamID    uuid.UUID
 	UpdatedAt *time.Time
@@ -113,12 +127,11 @@ type TeamApiKey struct {
 	CreatedBy *uuid.UUID
 	ID        uuid.UUID
 	// sensitive
-	ApiKeyHash       *string
-	ApiKeyMask       *string
-	ApiKeyPrefix     *string
-	ApiKeyLength     *int32
-	ApiKeyMaskPrefix *string
-	ApiKeyMaskSuffix *string
+	ApiKeyHash       string
+	ApiKeyPrefix     string
+	ApiKeyLength     int32
+	ApiKeyMaskPrefix string
+	ApiKeyMaskSuffix string
 }
 
 type Tier struct {
@@ -130,6 +143,8 @@ type Tier struct {
 	MaxLengthHours      int64
 	MaxVcpu             int64
 	MaxRamMb            int64
+	// The number of concurrent template builds the team can run
+	ConcurrentTemplateBuilds int64
 }
 
 type UsersTeam struct {

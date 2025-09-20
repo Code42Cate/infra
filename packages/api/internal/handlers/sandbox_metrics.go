@@ -21,13 +21,14 @@ import (
 
 func (a *APIStore) GetSandboxesSandboxIDMetrics(c *gin.Context, sandboxID string, params api.GetSandboxesSandboxIDMetricsParams) {
 	ctx := c.Request.Context()
-	ctx, span := a.Tracer.Start(ctx, "sandbox-metrics")
+	ctx, span := tracer.Start(ctx, "sandbox-metrics")
 	defer span.End()
 	sandboxID = utils.ShortID(sandboxID)
 
 	team := c.Value(auth.TeamContextKey).(authcache.AuthTeamInfo).Team
 
-	metricsReadFlag, err := a.featureFlags.BoolFlag(featureflags.MetricsReadFlagName, sandboxID)
+	metricsReadFlag, err := a.featureFlags.BoolFlag(ctx, featureflags.MetricsReadFlagName,
+		featureflags.SandboxContext(sandboxID))
 	if err != nil {
 		zap.L().Error("error getting metrics read feature flag, soft failing", zap.Error(err))
 	}
@@ -72,13 +73,14 @@ func (a *APIStore) GetSandboxesSandboxIDMetrics(c *gin.Context, sandboxID string
 	apiMetrics := make([]api.SandboxMetric, len(metrics))
 	for i, m := range metrics {
 		apiMetrics[i] = api.SandboxMetric{
-			Timestamp:  m.Timestamp,
-			CpuUsedPct: float32(m.CPUUsedPercent),
-			CpuCount:   int32(m.CPUCount),
-			MemTotal:   int64(m.MemTotal),
-			MemUsed:    int64(m.MemUsed),
-			DiskTotal:  int64(m.DiskTotal),
-			DiskUsed:   int64(m.DiskUsed),
+			Timestamp:     m.Timestamp,
+			TimestampUnix: m.Timestamp.Unix(),
+			CpuUsedPct:    float32(m.CPUUsedPercent),
+			CpuCount:      int32(m.CPUCount),
+			MemTotal:      int64(m.MemTotal),
+			MemUsed:       int64(m.MemUsed),
+			DiskTotal:     int64(m.DiskTotal),
+			DiskUsed:      int64(m.DiskUsed),
 		}
 	}
 

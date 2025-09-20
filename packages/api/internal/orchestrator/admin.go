@@ -4,10 +4,10 @@ import (
 	"cmp"
 	"slices"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/e2b-dev/infra/packages/api/internal/api"
-	"github.com/e2b-dev/infra/packages/api/internal/orchestrator/nodemanager"
 	"github.com/e2b-dev/infra/packages/shared/pkg/consts"
 	"github.com/e2b-dev/infra/packages/shared/pkg/logger"
 )
@@ -17,7 +17,7 @@ func (o *Orchestrator) AdminNodes() []*api.Node {
 
 	for _, n := range o.nodes.Items() {
 		// Skip all nodes that are not running in local (Nomad) cluster
-		if n.NomadNodeShortID == nodemanager.UnknownNomadNodeShortID {
+		if !n.IsNomadManaged() {
 			continue
 		}
 
@@ -25,6 +25,8 @@ func (o *Orchestrator) AdminNodes() []*api.Node {
 		metrics := n.GetAPIMetric()
 		apiNodes[n.ID] = &api.Node{
 			NodeID:               n.NomadNodeShortID,
+			Id:                   n.ID,
+			ServiceInstanceID:    meta.ServiceInstanceID,
 			ClusterID:            n.ClusterID.String(),
 			Status:               n.Status(),
 			CreateSuccesses:      n.PlacementMetrics.SuccessCount(),
@@ -36,14 +38,14 @@ func (o *Orchestrator) AdminNodes() []*api.Node {
 		}
 	}
 
-	for _, sbx := range o.instanceCache.Items() {
+	for _, sbx := range o.sandboxStore.Items(nil) {
 		n, ok := apiNodes[sbx.NodeID]
 		if !ok {
 			zap.L().Error("node for sandbox wasn't found", logger.WithNodeID(sbx.NodeID), logger.WithSandboxID(sbx.SandboxID))
 			continue
 		}
 
-		n.SandboxCount += 1
+		n.SandboxCount++
 	}
 
 	var result []*api.Node
@@ -58,8 +60,8 @@ func (o *Orchestrator) AdminNodes() []*api.Node {
 	return result
 }
 
-func (o *Orchestrator) AdminNodeDetail(nomadNodeShortID string) (*api.NodeDetail, error) {
-	n := o.GetNodeByNomadShortID(nomadNodeShortID)
+func (o *Orchestrator) AdminNodeDetail(clusterID uuid.UUID, nodeIDOrNomadNodeShortID string) (*api.NodeDetail, error) {
+	n := o.GetNodeByIDOrNomadShortID(clusterID, nodeIDOrNomadNodeShortID)
 	if n == nil {
 		return nil, ErrNodeNotFound
 	}
@@ -68,8 +70,10 @@ func (o *Orchestrator) AdminNodeDetail(nomadNodeShortID string) (*api.NodeDetail
 	metrics := n.GetAPIMetric()
 
 	node := &api.NodeDetail{
-		NodeID:    n.NomadNodeShortID,
-		ClusterID: n.ClusterID.String(),
+		Id:                n.ID,
+		NodeID:            n.NomadNodeShortID,
+		ClusterID:         n.ClusterID.String(),
+		ServiceInstanceID: meta.ServiceInstanceID,
 
 		Status:          n.Status(),
 		CreateSuccesses: n.PlacementMetrics.SuccessCount(),
@@ -79,7 +83,7 @@ func (o *Orchestrator) AdminNodeDetail(nomadNodeShortID string) (*api.NodeDetail
 		Metrics:         metrics,
 	}
 
-	for _, sbx := range o.instanceCache.Items() {
+	for _, sbx := range o.sandboxStore.Items(nil) {
 		if sbx.NodeID == n.ID && sbx.ClusterID == n.ClusterID {
 			var metadata *api.SandboxMetadata
 			if sbx.Metadata != nil {

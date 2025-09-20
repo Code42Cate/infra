@@ -19,7 +19,6 @@ type TeamAPIKey struct {
 func (TeamAPIKey) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).Immutable().Unique().Annotations(entsql.Default("gen_random_uuid()")),
-		field.String("api_key").Unique().Sensitive().SchemaType(map[string]string{dialect.Postgres: "character varying(44)"}),
 		field.String("api_key_hash").Unique().Sensitive().SchemaType(map[string]string{dialect.Postgres: "character varying(64)"}),
 
 		field.String("api_key_prefix").Immutable().SchemaType(map[string]string{dialect.Postgres: "character varying(10)"}),
@@ -45,6 +44,7 @@ func (TeamAPIKey) Edges() []ent.Edge {
 			Field("team_id"),
 		edge.From("creator", User.Type).Unique().
 			Ref("created_api_keys").Field("created_by"),
+		edge.To("created_secrets", Secret.Type).Annotations(entsql.OnDelete(entsql.SetNull)),
 	}
 }
 

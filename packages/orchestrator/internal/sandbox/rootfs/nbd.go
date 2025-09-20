@@ -8,7 +8,6 @@ import (
 	"os"
 	"syscall"
 
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 
@@ -29,11 +28,9 @@ type NBDProvider struct {
 
 	finishedOperations chan struct{}
 	devicePool         *nbd.DevicePool
-
-	tracer trace.Tracer
 }
 
-func NewNBDProvider(tracer trace.Tracer, rootfs block.ReadonlyDevice, cachePath string, devicePool *nbd.DevicePool) (Provider, error) {
+func NewNBDProvider(rootfs block.ReadonlyDevice, cachePath string, devicePool *nbd.DevicePool) (Provider, error) {
 	size, err := rootfs.Size()
 	if err != nil {
 		return nil, fmt.Errorf("error getting device size: %w", err)
@@ -48,10 +45,9 @@ func NewNBDProvider(tracer trace.Tracer, rootfs block.ReadonlyDevice, cachePath 
 
 	overlay := block.NewOverlay(rootfs, cache, blockSize)
 
-	mnt := nbd.NewDirectPathMount(tracer, overlay, devicePool)
+	mnt := nbd.NewDirectPathMount(overlay, devicePool)
 
 	return &NBDProvider{
-		tracer:             tracer,
 		mnt:                mnt,
 		overlay:            overlay,
 		ready:              utils.NewSetOnce[string](),
@@ -73,9 +69,9 @@ func (o *NBDProvider) Start(ctx context.Context) error {
 func (o *NBDProvider) ExportDiff(
 	parentCtx context.Context,
 	out io.Writer,
-	stopSandbox func(ctx context.Context) error,
+	closeSandbox func(ctx context.Context) error,
 ) (*header.DiffMetadata, error) {
-	childCtx, childSpan := o.tracer.Start(parentCtx, "cow-export")
+	childCtx, childSpan := tracer.Start(parentCtx, "cow-export")
 	defer childSpan.End()
 
 	cache, err := o.overlay.EjectCache()
@@ -85,7 +81,7 @@ func (o *NBDProvider) ExportDiff(
 
 	// the error is already logged in go routine in SandboxCreate handler
 	go func() {
-		err := stopSandbox(childCtx)
+		err := closeSandbox(childCtx)
 		if err != nil {
 			zap.L().Error("error stopping sandbox on cow export", zap.Error(err))
 		}
@@ -115,7 +111,7 @@ func (o *NBDProvider) ExportDiff(
 }
 
 func (o *NBDProvider) Close(ctx context.Context) error {
-	childCtx, childSpan := o.tracer.Start(ctx, "cow-close")
+	childCtx, childSpan := tracer.Start(ctx, "cow-close")
 	defer childSpan.End()
 
 	var errs []error

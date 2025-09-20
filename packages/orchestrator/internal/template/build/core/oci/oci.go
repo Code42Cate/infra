@@ -13,38 +13,54 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	containerregistry "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/core/filesystem"
-	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/writer"
+	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/core/oci/auth"
 	artifactsregistry "github.com/e2b-dev/infra/packages/shared/pkg/artifacts-registry"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 	"github.com/e2b-dev/infra/packages/shared/pkg/utils"
 )
+
+var tracer = otel.Tracer("github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/core/oci")
 
 const (
 	ToMBShift            = 20
 	tarballExportUpdates = 10
 )
 
-func GetPublicImage(ctx context.Context, tracer trace.Tracer, tag string) (containerregistry.Image, error) {
+var DefaultPlatform = containerregistry.Platform{
+	OS:           "linux",
+	Architecture: "amd64",
+}
+
+func GetPublicImage(ctx context.Context, tag string, authProvider auth.RegistryAuthProvider) (containerregistry.Image, error) {
 	childCtx, childSpan := tracer.Start(ctx, "pull-public-docker-image")
 	defer childSpan.End()
-
-	platform := containerregistry.Platform{
-		OS:           "linux",
-		Architecture: "amd64",
-	}
 
 	ref, err := name.ParseReference(tag)
 	if err != nil {
 		return nil, fmt.Errorf("invalid image reference: %w", err)
 	}
 
-	img, err := remote.Image(ref, remote.WithPlatform(platform))
+	// Build authentication options
+	opts := []remote.Option{remote.WithPlatform(DefaultPlatform)}
+
+	// Use the auth provider if provided
+	if authProvider != nil {
+		authOption, err := authProvider.GetAuthOption(childCtx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting auth option: %w", err)
+		}
+		if authOption != nil {
+			opts = append(opts, authOption)
+		}
+	}
+
+	img, err := remote.Image(ref, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error pulling image: %w", err)
 	}
@@ -53,16 +69,11 @@ func GetPublicImage(ctx context.Context, tracer trace.Tracer, tag string) (conta
 	return img, nil
 }
 
-func GetImage(ctx context.Context, tracer trace.Tracer, artifactRegistry artifactsregistry.ArtifactsRegistry, templateId string, buildId string) (containerregistry.Image, error) {
+func GetImage(ctx context.Context, artifactRegistry artifactsregistry.ArtifactsRegistry, templateId string, buildId string) (containerregistry.Image, error) {
 	childCtx, childSpan := tracer.Start(ctx, "pull-docker-image")
 	defer childSpan.End()
 
-	platform := containerregistry.Platform{
-		OS:           "linux",
-		Architecture: "amd64",
-	}
-
-	img, err := artifactRegistry.GetImage(childCtx, templateId, buildId, platform)
+	img, err := artifactRegistry.GetImage(childCtx, templateId, buildId, DefaultPlatform)
 	if err != nil {
 		return nil, fmt.Errorf("error pulling image: %w", err)
 	}
@@ -90,16 +101,16 @@ func GetImageSize(img containerregistry.Image) (int64, error) {
 	return imageSize, nil
 }
 
-func ToExt4(ctx context.Context, tracer trace.Tracer, postProcessor *writer.PostProcessor, img containerregistry.Image, rootfsPath string, maxSize int64, blockSize int64) (int64, error) {
+func ToExt4(ctx context.Context, logger *zap.Logger, img containerregistry.Image, rootfsPath string, maxSize int64, blockSize int64) (int64, error) {
 	ctx, childSpan := tracer.Start(ctx, "oci-to-ext4")
 	defer childSpan.End()
 
-	err := filesystem.Make(ctx, tracer, rootfsPath, maxSize>>ToMBShift, blockSize)
+	err := filesystem.Make(ctx, rootfsPath, maxSize>>ToMBShift, blockSize)
 	if err != nil {
 		return 0, fmt.Errorf("error creating ext4 file: %w", err)
 	}
 
-	err = ExtractToExt4(ctx, tracer, postProcessor, img, rootfsPath)
+	err = ExtractToExt4(ctx, logger, img, rootfsPath)
 	if err != nil {
 		return 0, fmt.Errorf("error extracting image to ext4 filesystem: %w", err)
 	}
@@ -111,7 +122,7 @@ func ToExt4(ctx context.Context, tracer trace.Tracer, postProcessor *writer.Post
 	}
 
 	// The filesystem is first created with the maximum size, so we need to shrink it to the actual size
-	size, err := filesystem.Shrink(ctx, tracer, rootfsPath)
+	size, err := filesystem.Shrink(ctx, rootfsPath)
 	if err != nil {
 		return 0, fmt.Errorf("error shrinking ext4 filesystem: %w", err)
 	}
@@ -125,7 +136,7 @@ func ToExt4(ctx context.Context, tracer trace.Tracer, postProcessor *writer.Post
 	return size, nil
 }
 
-func ExtractToExt4(ctx context.Context, tracer trace.Tracer, postProcessor *writer.PostProcessor, img containerregistry.Image, rootfsPath string) error {
+func ExtractToExt4(ctx context.Context, logger *zap.Logger, img containerregistry.Image, rootfsPath string) error {
 	ctx, childSpan := tracer.Start(ctx, "extract-to-ext4")
 	defer childSpan.End()
 
@@ -139,12 +150,12 @@ func ExtractToExt4(ctx context.Context, tracer trace.Tracer, postProcessor *writ
 		}
 	}()
 
-	err = filesystem.Mount(ctx, tracer, rootfsPath, tmpMount)
+	err = filesystem.Mount(ctx, rootfsPath, tmpMount)
 	if err != nil {
 		return fmt.Errorf("error mounting ext4 filesystem: %w", err)
 	}
 	defer func() {
-		if unmountErr := filesystem.Unmount(context.WithoutCancel(ctx), tracer, tmpMount); unmountErr != nil {
+		if unmountErr := filesystem.Unmount(context.WithoutCancel(ctx), tmpMount); unmountErr != nil {
 			zap.L().Error("error unmounting ext4 filesystem", zap.Error(unmountErr))
 		}
 	}()
@@ -154,7 +165,7 @@ func ExtractToExt4(ctx context.Context, tracer trace.Tracer, postProcessor *writ
 		zap.String("tmp_mount", tmpMount),
 	)
 
-	err = unpackRootfs(ctx, tracer, postProcessor, img, tmpMount)
+	err = unpackRootfs(ctx, logger, img, tmpMount)
 	if err != nil {
 		return fmt.Errorf("error extracting tar to directory: %w", err)
 	}
@@ -181,7 +192,7 @@ func ParseEnvs(envs []string) map[string]string {
 	return envMap
 }
 
-func unpackRootfs(ctx context.Context, tracer trace.Tracer, postProcessor *writer.PostProcessor, srcImage containerregistry.Image, destDir string) (err error) {
+func unpackRootfs(ctx context.Context, logger *zap.Logger, srcImage containerregistry.Image, destDir string) (err error) {
 	ctx, childSpan := tracer.Start(ctx, "unpack-rootfs")
 	defer childSpan.End()
 
@@ -194,7 +205,7 @@ func unpackRootfs(ctx context.Context, tracer trace.Tracer, postProcessor *write
 	}()
 
 	// Create export of layers in the temporary directory
-	layers, err := createExport(ctx, tracer, postProcessor, srcImage, ociPath)
+	layers, err := createExport(ctx, logger, srcImage, ociPath)
 	if err != nil {
 		return fmt.Errorf("while creating export of source image: %w", err)
 	}
@@ -208,25 +219,25 @@ func unpackRootfs(ctx context.Context, tracer trace.Tracer, postProcessor *write
 		go os.RemoveAll(mountPath)
 	}()
 
-	err = filesystem.MountOverlayFS(ctx, tracer, layers, mountPath)
+	err = filesystem.MountOverlayFS(ctx, layers, mountPath)
 	if err != nil {
 		return fmt.Errorf("while mounting overlayfs with layers: %w", err)
 	}
 	defer func() {
-		if unmountErr := filesystem.Unmount(context.WithoutCancel(ctx), tracer, mountPath); unmountErr != nil {
+		if unmountErr := filesystem.Unmount(context.WithoutCancel(ctx), mountPath); unmountErr != nil {
 			zap.L().Error("error unmounting overlayfs mount point", zap.Error(unmountErr))
 		}
 	}()
 
 	// List files in the mount point
-	files, err := listFiles(ctx, tracer, mountPath)
+	files, err := listFiles(ctx, mountPath)
 	if err != nil {
 		return fmt.Errorf("while listing files in overlayfs: %w", err)
 	}
-	postProcessor.Info("Root filesystem structure: " + strings.Join(files, ", "))
+	logger.Info("Root filesystem structure: " + strings.Join(files, ", "))
 
 	// Copy files from the overlayfs mount point to the destination directory
-	err = copyFiles(ctx, tracer, mountPath, destDir)
+	err = copyFiles(ctx, mountPath, destDir)
 	if err != nil {
 		return fmt.Errorf("while copying files from overlayfs to destination directory: %w", err)
 	}
@@ -234,7 +245,7 @@ func unpackRootfs(ctx context.Context, tracer trace.Tracer, postProcessor *write
 	return nil
 }
 
-func listFiles(ctx context.Context, tracer trace.Tracer, dir string) ([]string, error) {
+func listFiles(ctx context.Context, dir string) ([]string, error) {
 	_, childSpan := tracer.Start(ctx, "list-files")
 	defer childSpan.End()
 
@@ -249,7 +260,7 @@ func listFiles(ctx context.Context, tracer trace.Tracer, dir string) ([]string, 
 }
 
 // copyFiles uses rsync to copy files from the source directory to the destination directory.
-func copyFiles(ctx context.Context, tracer trace.Tracer, src, dest string) error {
+func copyFiles(ctx context.Context, src, dest string) error {
 	_, childSpan := tracer.Start(ctx, "copy-files")
 	defer childSpan.End()
 
@@ -275,7 +286,7 @@ func copyFiles(ctx context.Context, tracer trace.Tracer, src, dest string) error
 // and returns the paths of the extracted layers. The layers are extracted in reverse order
 // to maintain the correct order for overlayFS.
 // The layers are extracted in parallel to speed up the process.
-func createExport(ctx context.Context, tracer trace.Tracer, postProcessor *writer.PostProcessor, srcImage containerregistry.Image, path string) ([]string, error) {
+func createExport(ctx context.Context, logger *zap.Logger, srcImage containerregistry.Image, path string) ([]string, error) {
 	ctx, childSpan := tracer.Start(ctx, "create-oci-export")
 	defer childSpan.End()
 
@@ -300,7 +311,7 @@ func createExport(ctx context.Context, tracer trace.Tracer, postProcessor *write
 			attribute.String("layer.digest", digest.String()),
 			attribute.Int64("layer.size", size),
 		)
-		postProcessor.Info(fmt.Sprintf("Uncompressing layer %s %s", digest, humanize.Bytes(uint64(size))))
+		logger.Info(fmt.Sprintf("Uncompressing layer %s %s", digest, humanize.Bytes(uint64(size))))
 
 		// Each layer has to be uniquely named, even if the digest is the same across different layers
 		layerPath := filepath.Join(path, fmt.Sprintf("layer-%d-%s", i, strings.ReplaceAll(digest.String(), ":", "-")))
@@ -332,7 +343,7 @@ func createExport(ctx context.Context, tracer trace.Tracer, postProcessor *write
 		return nil, fmt.Errorf("while extracting layers: %w", err)
 	}
 
-	postProcessor.Info("Layers extracted")
+	logger.Info("Layers extracted")
 
 	return layerPaths, nil
 }

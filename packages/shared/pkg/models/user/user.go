@@ -22,6 +22,8 @@ const (
 	EdgeAccessTokens = "access_tokens"
 	// EdgeCreatedAPIKeys holds the string denoting the created_api_keys edge name in mutations.
 	EdgeCreatedAPIKeys = "created_api_keys"
+	// EdgeCreatedSecrets holds the string denoting the created_secrets edge name in mutations.
+	EdgeCreatedSecrets = "created_secrets"
 	// EdgeUsersTeams holds the string denoting the users_teams edge name in mutations.
 	EdgeUsersTeams = "users_teams"
 	// Table holds the table name of the user in the database.
@@ -52,6 +54,13 @@ const (
 	CreatedAPIKeysInverseTable = "team_api_keys"
 	// CreatedAPIKeysColumn is the table column denoting the created_api_keys relation/edge.
 	CreatedAPIKeysColumn = "created_by"
+	// CreatedSecretsTable is the table that holds the created_secrets relation/edge.
+	CreatedSecretsTable = "secrets"
+	// CreatedSecretsInverseTable is the table name for the Secret entity.
+	// It exists in this package in order to avoid circular dependency with the "secret" package.
+	CreatedSecretsInverseTable = "secrets"
+	// CreatedSecretsColumn is the table column denoting the created_secrets relation/edge.
+	CreatedSecretsColumn = "created_by_user"
 	// UsersTeamsTable is the table that holds the users_teams relation/edge.
 	UsersTeamsTable = "users_teams"
 	// UsersTeamsInverseTable is the table name for the UsersTeams entity.
@@ -157,6 +166,20 @@ func ByCreatedAPIKeys(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByCreatedSecretsCount orders the results by created_secrets count.
+func ByCreatedSecretsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCreatedSecretsStep(), opts...)
+	}
+}
+
+// ByCreatedSecrets orders the results by created_secrets terms.
+func ByCreatedSecrets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCreatedSecretsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByUsersTeamsCount orders the results by users_teams count.
 func ByUsersTeamsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -196,6 +219,13 @@ func newCreatedAPIKeysStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CreatedAPIKeysInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, CreatedAPIKeysTable, CreatedAPIKeysColumn),
+	)
+}
+func newCreatedSecretsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CreatedSecretsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, CreatedSecretsTable, CreatedSecretsColumn),
 	)
 }
 func newUsersTeamsStep() *sqlgraph.Step {

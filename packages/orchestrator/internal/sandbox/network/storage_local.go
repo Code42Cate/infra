@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -18,16 +17,15 @@ type StorageLocal struct {
 	foreignNs    map[string]struct{}
 	acquiredNs   map[string]struct{}
 	acquiredNsMu sync.Mutex
-	tracer       trace.Tracer
 }
 
 const netNamespacesDir = "/var/run/netns"
 
-func NewStorageLocal(slotsSize int, tracer trace.Tracer) (*StorageLocal, error) {
+func NewStorageLocal(slotsSize int) (*StorageLocal, error) {
 	// get namespaces that we want to always skip
 	foreignNs, err := getForeignNamespaces()
 	if err != nil {
-		return nil, fmt.Errorf("error getting already used namespaces: %v", err)
+		return nil, fmt.Errorf("error getting already used namespaces: %w", err)
 	}
 
 	foreignNsMap := make(map[string]struct{})
@@ -41,12 +39,11 @@ func NewStorageLocal(slotsSize int, tracer trace.Tracer) (*StorageLocal, error) 
 		slotsSize:    slotsSize,
 		acquiredNs:   make(map[string]struct{}, slotsSize),
 		acquiredNsMu: sync.Mutex{},
-		tracer:       tracer,
 	}, nil
 }
 
 func (s *StorageLocal) Acquire(ctx context.Context) (*Slot, error) {
-	spanCtx, span := s.tracer.Start(ctx, "network-namespace-acquire")
+	spanCtx, span := tracer.Start(ctx, "network-namespace-acquire")
 	defer span.End()
 
 	acquireTimeoutCtx, acquireCancel := context.WithTimeout(spanCtx, time.Millisecond*500)
@@ -83,7 +80,7 @@ func (s *StorageLocal) Acquire(ctx context.Context) (*Slot, error) {
 			// check if the slot can be acquired
 			available, err := isNamespaceAvailable(slotName)
 			if err != nil {
-				return nil, fmt.Errorf("error checking if namespace is available: %v", err)
+				return nil, fmt.Errorf("error checking if namespace is available: %w", err)
 			}
 
 			if !available {
@@ -136,7 +133,7 @@ func getForeignNamespaces() ([]string, error) {
 			return ns, nil
 		}
 
-		return nil, fmt.Errorf("error reading netns directory: %v", err)
+		return nil, fmt.Errorf("error reading netns directory: %w", err)
 	}
 
 	for _, file := range files {
