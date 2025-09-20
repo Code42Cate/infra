@@ -377,6 +377,7 @@ func run(port, proxyPort, hyperloopPort uint) (success bool) {
 			NetworkPool:      networkPool,
 			DevicePool:       devicePool,
 			CertificateCache: certificateCache,
+			Vault:            vault,
 			TemplateCache:    templateCache,
 			Info:             serviceInfo,
 			Proxy:            sandboxProxy,

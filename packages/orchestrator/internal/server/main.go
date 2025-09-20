@@ -23,6 +23,7 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/smap"
 	"github.com/e2b-dev/infra/packages/shared/pkg/storage"
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
+	"github.com/e2b-dev/infra/packages/shared/pkg/vault"
 )
 
 type server struct {
@@ -34,6 +35,7 @@ type server struct {
 	networkPool       *network.Pool
 	templateCache     *template.Cache
 	pauseMu           sync.Mutex
+	vault             *vault.Client
 	certificateCache  *egress.CertificateCache
 	devicePool        *nbd.DevicePool
 	persistence       storage.StorageProvider
@@ -56,6 +58,7 @@ type ServiceConfig struct {
 	NetworkPool      *network.Pool
 	DevicePool       *nbd.DevicePool
 	CertificateCache *egress.CertificateCache
+	Vault            *vault.Client
 	TemplateCache    *template.Cache
 	Info             *service.ServiceInfo
 	Proxy            *proxy.SandboxProxy
@@ -80,6 +83,7 @@ func New(
 		sandboxes:         cfg.Sandboxes,
 		networkPool:       cfg.NetworkPool,
 		templateCache:     cfg.TemplateCache,
+		vault:             cfg.Vault,
 		devicePool:        cfg.DevicePool,
 		persistence:       cfg.Persistence,
 		certificateCache:  cfg.CertificateCache,
