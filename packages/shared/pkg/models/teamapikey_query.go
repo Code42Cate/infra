@@ -382,12 +382,12 @@ func (takq *TeamAPIKeyQuery) WithCreatedSecrets(opts ...func(*SecretQuery)) *Tea
 // Example:
 //
 //	var v []struct {
-//		APIKey string `json:"api_key,omitempty"`
+//		APIKeyHash string `json:"api_key_hash,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.TeamAPIKey.Query().
-//		GroupBy(teamapikey.FieldAPIKey).
+//		GroupBy(teamapikey.FieldAPIKeyHash).
 //		Aggregate(models.Count()).
 //		Scan(ctx, &v)
 func (takq *TeamAPIKeyQuery) GroupBy(field string, fields ...string) *TeamAPIKeyGroupBy {
@@ -405,11 +405,11 @@ func (takq *TeamAPIKeyQuery) GroupBy(field string, fields ...string) *TeamAPIKey
 // Example:
 //
 //	var v []struct {
-//		APIKey string `json:"api_key,omitempty"`
+//		APIKeyHash string `json:"api_key_hash,omitempty"`
 //	}
 //
 //	client.TeamAPIKey.Query().
-//		Select(teamapikey.FieldAPIKey).
+//		Select(teamapikey.FieldAPIKeyHash).
 //		Scan(ctx, &v)
 func (takq *TeamAPIKeyQuery) Select(fields ...string) *TeamAPIKeySelect {
 	takq.ctx.Fields = append(takq.ctx.Fields, fields...)

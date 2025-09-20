@@ -16,7 +16,6 @@ import (
 	nomadapi "github.com/hashicorp/nomad/api"
 	middleware "github.com/oapi-codegen/gin-middleware"
 	"github.com/redis/go-redis/v9"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	analyticscollector "github.com/e2b-dev/infra/packages/api/internal/analytics_collector"
@@ -54,7 +53,6 @@ var supabaseJWTSecrets = strings.Split(supabaseJWTSecretsString, ",")
 type APIStore struct {
 	Healthy                  bool
 	posthog                  *analyticscollector.PosthogClient
-	Tracer                   trace.Tracer
 	Telemetry                *telemetry.Client
 	orchestrator             *orchestrator.Orchestrator
 	templateManager          *template_manager.TemplateManager
@@ -73,8 +71,6 @@ type APIStore struct {
 }
 
 func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
-	tracer := tel.TracerProvider.Tracer("api")
-
 	zap.L().Info("Initializing API store and services")
 
 	dbClient, err := db.NewClient(40, 20)
@@ -144,7 +140,7 @@ func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
 		zap.L().Info("Connected to Redis cluster")
 	}
 
-	clustersPool, err := edge.NewPool(ctx, tel, sqlcDB, tracer)
+	clustersPool, err := edge.NewPool(ctx, tel, sqlcDB)
 	if err != nil {
 		zap.L().Fatal("initializing edge clusters pool failed", zap.Error(err))
 	}
@@ -154,7 +150,7 @@ func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
 		zap.L().Fatal("failed to create feature flags client", zap.Error(err))
 	}
 
-	orch, err := orchestrator.New(ctx, tel, tracer, nomadClient, posthogClient, redisClient, dbClient, clustersPool, featureFlags)
+	orch, err := orchestrator.New(ctx, tel, nomadClient, posthogClient, redisClient, dbClient, sqlcDB, clustersPool, featureFlags)
 	if err != nil {
 		zap.L().Fatal("Initializing Orchestrator client", zap.Error(err))
 	}
@@ -167,15 +163,15 @@ func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
 
 	authCache := authcache.NewTeamAuthCache()
 	templateCache := templatecache.NewTemplateCache(sqlcDB)
-	templateSpawnCounter := utils.NewTemplateSpawnCounter(time.Minute, dbClient)
+	templateSpawnCounter := utils.NewTemplateSpawnCounter(time.Minute, dbClient) //nolint:contextcheck // TODO: fix this later
 
 	accessTokenGenerator, err := sandbox.NewEnvdAccessTokenGenerator()
 	if err != nil {
 		zap.L().Fatal("Initializing access token generator failed", zap.Error(err))
 	}
 
-	templateBuildsCache := templatecache.NewTemplateBuildCache(dbClient)
-	templateManager, err := template_manager.New(ctx, tracer, tel.TracerProvider, tel.MeterProvider, dbClient, sqlcDB, clustersPool, templateBuildsCache, templateCache)
+	templateBuildsCache := templatecache.NewTemplateBuildCache(sqlcDB)
+	templateManager, err := template_manager.New(ctx, tel.TracerProvider, tel.MeterProvider, dbClient, sqlcDB, clustersPool, templateBuildsCache, templateCache)
 	if err != nil {
 		zap.L().Fatal("Initializing Template manager client", zap.Error(err))
 	}
@@ -190,7 +186,6 @@ func NewAPIStore(ctx context.Context, tel *telemetry.Client) *APIStore {
 		db:                       dbClient,
 		sqlcDB:                   sqlcDB,
 		Telemetry:                tel,
-		Tracer:                   tracer,
 		posthog:                  posthogClient,
 		templateCache:            templateCache,
 		secretVault:              secretVault,
@@ -327,7 +322,7 @@ func (a *APIStore) GetUserFromAccessToken(ctx context.Context, accessToken strin
 		}
 	}
 
-	userID, err := a.db.GetUserID(ctx, hashedToken)
+	userID, err := a.sqlcDB.GetUserIDFromAccessToken(ctx, hashedToken)
 	if err != nil {
 		return uuid.UUID{}, &api.APIError{
 			Err:       fmt.Errorf("failed to get the user from db for an access token: %w", err),
@@ -336,7 +331,7 @@ func (a *APIStore) GetUserFromAccessToken(ctx context.Context, accessToken strin
 		}
 	}
 
-	return *userID, nil
+	return userID, nil
 }
 
 // supabaseClaims defines the claims we expect from the Supabase JWT.
@@ -355,7 +350,7 @@ func getJWTClaims(secrets []string, token string) (*supabaseClaims, error) {
 		}
 
 		// Parse the token with the custom claims.
-		token, err := jwt.ParseWithClaims(token, &supabaseClaims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(token, &supabaseClaims{}, func(token *jwt.Token) (any, error) {
 			// Verify that the signing method is HMAC (HS256)
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

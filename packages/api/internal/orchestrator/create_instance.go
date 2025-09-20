@@ -47,11 +47,11 @@ func (o *Orchestrator) CreateSandbox(
 	allowedSecrets *bool,
 	allowInternetAccess *bool,
 ) (*api.Sandbox, *api.APIError) {
-	ctx, childSpan := o.tracer.Start(ctx, "create-sandbox")
+	ctx, childSpan := tracer.Start(ctx, "create-sandbox")
 	defer childSpan.End()
 
 	// Check if team has reached max instances
-	releaseTeamSandboxReservation, err := o.instanceCache.Reserve(sandboxID, team.Team.ID, team.Tier.ConcurrentInstances)
+	releaseTeamSandboxReservation, err := o.sandboxStore.Reserve(sandboxID, team.Team.ID, team.Tier.ConcurrentInstances)
 	if err != nil {
 		var limitErr *instance.SandboxLimitExceededError
 		var alreadyErr *instance.AlreadyBeingStartedError
@@ -117,7 +117,7 @@ func (o *Orchestrator) CreateSandbox(
 	sbxRequest := &orchestrator.SandboxCreateRequest{
 		Sandbox: &orchestrator.SandboxConfig{
 			BaseTemplateId:      baseTemplateID,
-			TemplateId:          *build.EnvID,
+			TemplateId:          build.EnvID,
 			Alias:               &alias,
 			TeamId:              team.Team.ID.String(),
 			BuildId:             build.ID.String(),
@@ -158,7 +158,7 @@ func (o *Orchestrator) CreateSandbox(
 	clusterNodes := o.GetClusterNodes(nodeClusterID)
 
 	algorithm := o.getPlacementAlgorithm(ctx)
-	node, err = placement.PlaceSandbox(ctx, o.tracer, algorithm, clusterNodes, node, sbxRequest)
+	node, err = placement.PlaceSandbox(ctx, algorithm, clusterNodes, node, sbxRequest)
 	if err != nil {
 		telemetry.ReportError(ctx, "failed to create sandbox", err)
 
@@ -186,7 +186,7 @@ func (o *Orchestrator) CreateSandbox(
 	sbx := api.Sandbox{
 		ClientID:        consts.ClientID,
 		SandboxID:       sandboxID,
-		TemplateID:      *build.EnvID,
+		TemplateID:      build.EnvID,
 		Alias:           &alias,
 		EnvdVersion:     *build.EnvdVersion,
 		EnvdAccessToken: envdAuthToken,
@@ -224,13 +224,13 @@ func (o *Orchestrator) CreateSandbox(
 		baseTemplateID,
 	)
 
-	cacheErr := o.instanceCache.Add(ctx, instanceInfo, true)
+	cacheErr := o.sandboxStore.Add(ctx, instanceInfo, true)
 	if cacheErr != nil {
 		telemetry.ReportError(ctx, "error when adding instance to cache", cacheErr)
 
-		deleted := o.DeleteInstance(ctx, sbx.SandboxID, false)
-		if !deleted {
-			telemetry.ReportEvent(ctx, "instance wasn't found in cache when deleting")
+		err := o.RemoveInstance(ctx, instanceInfo, instance.RemoveTypeKill)
+		if err != nil {
+			telemetry.ReportError(ctx, "Error while removing sandbox error after cache error", err)
 		}
 
 		return nil, &api.APIError{
