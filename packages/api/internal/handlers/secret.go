@@ -109,7 +109,6 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 
 	telemetry.ReportEvent(ctx, "Created secret")
 
-	_, analyticsSpan := a.Tracer.Start(ctx, "analytics")
 	a.posthog.IdentifyAnalyticsTeam(teamID.String(), a.GetTeamInfo(c).Team.Name)
 	properties := a.posthog.GetPackageToPosthogProperties(&c.Request.Header)
 	a.posthog.CreateAnalyticsTeamEvent(teamID.String(), "created_secret",
@@ -117,7 +116,6 @@ func (a *APIStore) PostSecrets(c *gin.Context) {
 			Set("secret_id", secret.ID.String()).
 			Set("allowlist", body.Allowlist), // probably interesting to track to see what type of secrets users are trying to protect
 	)
-	analyticsSpan.End()
 
 	telemetry.ReportEvent(ctx, "Created analytics event")
 
