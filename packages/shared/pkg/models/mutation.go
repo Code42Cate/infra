@@ -7680,11 +7680,9 @@ func (m *TeamMutation) ResetEdge(name string) error {
 // TeamAPIKeyMutation represents an operation that mutates the TeamAPIKey nodes in the graph.
 type TeamAPIKeyMutation struct {
 	config
-<<<<<<< HEAD
 	op                     Op
 	typ                    string
 	id                     *uuid.UUID
-	api_key                *string
 	api_key_hash           *string
 	api_key_prefix         *string
 	api_key_length         *int
@@ -7706,29 +7704,6 @@ type TeamAPIKeyMutation struct {
 	done                   bool
 	oldValue               func(context.Context) (*TeamAPIKey, error)
 	predicates             []predicate.TeamAPIKey
-=======
-	op                  Op
-	typ                 string
-	id                  *uuid.UUID
-	api_key_hash        *string
-	api_key_prefix      *string
-	api_key_length      *int
-	addapi_key_length   *int
-	api_key_mask_prefix *string
-	api_key_mask_suffix *string
-	created_at          *time.Time
-	updated_at          *time.Time
-	name                *string
-	last_used           *time.Time
-	clearedFields       map[string]struct{}
-	team                *uuid.UUID
-	clearedteam         bool
-	creator             *uuid.UUID
-	clearedcreator      bool
-	done                bool
-	oldValue            func(context.Context) (*TeamAPIKey, error)
-	predicates          []predicate.TeamAPIKey
->>>>>>> secrets/infra
 }
 
 var _ ent.Mutation = (*TeamAPIKeyMutation)(nil)

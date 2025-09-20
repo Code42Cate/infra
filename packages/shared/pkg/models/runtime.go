@@ -81,7 +81,10 @@ func init() {
 	envbuildDescKernelVersion := envbuildFields[13].Descriptor()
 	// envbuild.DefaultKernelVersion holds the default value on creation for the kernel_version field.
 	envbuild.DefaultKernelVersion = envbuildDescKernelVersion.Default.(string)
-<<<<<<< HEAD
+	// envbuildDescReason is the schema descriptor for reason field.
+	envbuildDescReason := envbuildFields[17].Descriptor()
+	// envbuild.DefaultReason holds the default value on creation for the reason field.
+	envbuild.DefaultReason = envbuildDescReason.Default.(schema.BuildReason)
 	secretFields := schema.Secret{}.Fields()
 	_ = secretFields
 	// secretDescCreatedAt is the schema descriptor for created_at field.
@@ -92,12 +95,6 @@ func init() {
 	secretDescDescription := secretFields[5].Descriptor()
 	// secret.DefaultDescription holds the default value on creation for the description field.
 	secret.DefaultDescription = secretDescDescription.Default.(string)
-=======
-	// envbuildDescReason is the schema descriptor for reason field.
-	envbuildDescReason := envbuildFields[17].Descriptor()
-	// envbuild.DefaultReason holds the default value on creation for the reason field.
-	envbuild.DefaultReason = envbuildDescReason.Default.(schema.BuildReason)
->>>>>>> secrets/infra
 	snapshotFields := schema.Snapshot{}.Fields()
 	_ = snapshotFields
 	// snapshotDescCreatedAt is the schema descriptor for created_at field.
